@@ -146,6 +146,24 @@
           ((char= #\% next) (make-percentage-token :value number))
           (t number))))
 
+;;;; 4.3.2. Consume comments
+;;; https://www.w3.org/TR/css-syntax-3/#consume-comment
+
+(defun consume-comments
+       (&optional (input *standard-input*)
+        &aux (input (ensure-input-stream input)))
+  (macrolet ((! (form)
+               `(handler-case ,form
+                  (end-of-file ()
+                    (error 'css-parse-error :stream input))
+                  (:no-error (char)
+                    char))))
+    (loop :for char = (! (read-char input))
+          :if (char= #\* char)
+            :do (let ((end? (! (read-char input))))
+                  (when (char= #\/ end?)
+                    (return (values)))))))
+
 ;;;; READERS
 
 (defun |+--reader| (stream character)
