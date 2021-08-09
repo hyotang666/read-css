@@ -170,9 +170,15 @@
   (unread-char character)
   (consume-a-numeric-token stream))
 
+(defun |/*-reader| (stream character number)
+  (declare (ignore character number))
+  (consume-comments stream))
+
 ;;;; CSS-READTABLE
 
 (named-readtables:defreadtable css-readtable
+  (:macro-char #\/ :dispatch)
+  (:dispatch-macro-char #\/ #\* '|/*-reader|)
   (:macro-char #\+ '|+--reader|)
   (:macro-char #\- '|+--reader|))
 
