@@ -64,6 +64,34 @@
     (or (name-start-code-point-p char)
         (values (gethash char name-code-point)))))
 
+;;;; CONSUMERS
+;;;; 4.3.7. Consume an escaped code point
+;;; https://www.w3.org/TR/css-syntax-3/#consume-an-escaped-code-point
+
+(defconstant +maximum-allowed-code-point+ #x10FFFF)
+
+(defun surrogatep (code)
+  ;; https://infra.spec.whatwg.org/#surrogate
+  (<= #xD800 code #xDFFF))
+
+(defun consume-an-escaped-code-point
+       (&optional (input *standard-input*)
+        &aux (input (ensure-input-stream input)))
+  (let ((code
+         (let ((*read-base* 16))
+           (read-from-string
+             (with-output-to-string (*standard-output*)
+               (loop :repeat 6
+                     :for c = (read-char input)
+                     :if (digit-char-p c 16)
+                       :do (write-char c)
+                     :else :if (char= #\Space c)
+                       :do (loop-finish)))))))
+    (cond
+      ((or (< +maximum-allowed-code-point+ code) (= 0 code) (surrogatep code))
+       (code-char #xFFFD))
+      (t (code-char code)))))
+
 ;;;; 4.3.12. Consume a number
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-a-number
 
