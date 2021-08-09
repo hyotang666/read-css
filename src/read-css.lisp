@@ -146,6 +146,20 @@
           ((char= #\% next) (make-percentage-token :value number))
           (t number))))
 
+;;;; READERS
+
+(defun |+--reader| (stream character)
+  (unread-char character)
+  (consume-a-numeric-token stream))
+
+;;;; CSS-READTABLE
+
+(named-readtables:defreadtable css-readtable
+  (:macro-char #\+ '|+--reader|)
+  (:macro-char #\- '|+--reader|))
+
+;;;; READ-CSS
+
 (defun read-style
        (&optional (input *standard-input*) (eof-error-p t) eof-value
         &aux (input (ensure-input-stream input)))
@@ -165,12 +179,4 @@
            (consume-a-numeric-token input))
           (t (read input eof-error-p eof-value)))))))
 
-(defun |+--reader| (stream character)
-  (unread-char character)
-  (consume-a-numeric-token stream))
 
-;;;; CSS-READTABLE
-
-(named-readtables:defreadtable css-readtable
-  (:macro-char #\+ '|+--reader|)
-  (:macro-char #\- '|+--reader|))
