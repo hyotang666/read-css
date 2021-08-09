@@ -164,3 +164,13 @@
            (unread-char char)
            (consume-a-numeric-token input))
           (t (read input eof-error-p eof-value)))))))
+
+(defun |+--reader| (stream character)
+  (unread-char character)
+  (consume-a-numeric-token stream))
+
+;;;; CSS-READTABLE
+
+(named-readtables:defreadtable css-readtable
+  (:macro-char #\+ '|+--reader|)
+  (:macro-char #\- '|+--reader|))

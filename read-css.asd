@@ -2,9 +2,10 @@
 (in-package :asdf)
 (defsystem "read-css"
   :version
-  "0.11.0"
+  "0.12.0"
   :depends-on
   (
+   "named-readtables"   ; Readtable manager.
    "uiop"               ; Utilities.
    )
   :pathname
