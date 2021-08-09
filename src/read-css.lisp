@@ -6,6 +6,10 @@
 
 (in-package :read-css)
 
+;;;; CONDITIONS
+
+(define-condition css-parse-error (end-of-file) ())
+
 ;;;; Utilities
 
 (defun ensure-input-stream (stream-designator)

@@ -2,7 +2,7 @@
 (in-package :asdf)
 (defsystem "read-css"
   :version
-  "0.7.0"
+  "0.8.0"
   :depends-on
   (
    "uiop"               ; Utilities.
