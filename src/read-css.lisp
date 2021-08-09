@@ -97,10 +97,12 @@
 ;;;; 4.3.12. Consume a number
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-a-number
 
-(defun consume-a-number
-       (&optional (input *standard-input*)
-        &aux (input (ensure-input-stream input)))
-  (read input))
+(let ((cl-table (named-readtables:find-readtable :standard)))
+  (defun consume-a-number
+    (&optional (input *standard-input*)
+	       &aux (input (ensure-input-stream input)))
+    (let ((*readtable* cl-table))
+      (read input))))
 
 ;;;; 4.3.11. Consume a name
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-name
