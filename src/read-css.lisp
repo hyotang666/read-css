@@ -14,6 +14,10 @@
     ((eql t) *terminal-io*)
     (null *standard-input*)))
 
+(defun non-ascii-code-point-p (char)
+  ;; https://www.w3.org/TR/css-syntax-3/#non-ascii-code-point
+  (<= #x80 (char-code char)))
+
 ;;;; 4.3.12. Consume a number
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-a-number
 
