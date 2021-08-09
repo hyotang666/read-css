@@ -120,3 +120,28 @@
             :do (write-char (consume-an-escaped-code-point input))
           :else
             :do (loop-finish))))
+
+;;;; 4.3.3. Consume a numeric token
+;;; https://www.w3.org/TR/css-syntax-3/#consume-numeric-token
+
+(defstruct percentage-token (value (error "VALUE is required.") :type real))
+
+(defstruct dimension-token
+  (value (error "VALUE is required.") :type real)
+  (type nil :type (member nil :number))
+  (unit (error "UNIT is required.") :type string))
+
+(defun consume-a-numeric-token
+       (&optional (input *standard-input*)
+        &aux (input (ensure-input-stream input)))
+  (let ((number (consume-a-number input)) (next (read-char input nil nil)))
+    (cond ((null next) number)
+          ((or (char= #\- next)
+               (name-start-code-point-p next)
+               (char= #\\ next))
+           (unread-char next)
+           (make-dimension-token :type :number
+                                 :value number
+                                 :unit (consume-a-name input nil "")))
+          ((char= #\% next) (make-percentage-token :value number))
+          (t number))))
