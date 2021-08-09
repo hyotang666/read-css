@@ -179,4 +179,27 @@
            (consume-a-numeric-token input))
           (t (read input eof-error-p eof-value)))))))
 
+(declaim
+ (ftype (function (&optional (or boolean stream))
+         (values list ; of-type style
+                 &optional))
+        read-css))
+
+(let ((end-of-file '#:end-of-file))
+  (defun read-css
+         (&optional (input *standard-input*)
+          &aux (input (ensure-input-stream input)))
+    (let ((*readtable* (named-readtables:find-readtable 'css-readtable)))
+      (uiop:while-collecting (acc)
+        (loop (multiple-value-call
+                  (lambda (&rest styles)
+                    (typecase styles
+                      (null) ; Zero values.
+                      ((cons * null) ; One value.
+                       (if (eq end-of-file (car styles))
+                           (return)
+                           (acc (car styles))))
+                      (otherwise ; Some values
+                       (error "NIY"))))
+                (read-style input nil end-of-file)))))))
 
