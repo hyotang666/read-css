@@ -19,6 +19,11 @@
   (<= #x80 (char-code char)))
 
 ;;;; CONSTANTS
+;; https://www.w3.org/TR/css-syntax-3/#digit
+
+(unless (boundp '+digits+)
+  (defconstant +digits+ "1234567890"))
+
 ;; https://www.w3.org/TR/css-syntax-3/#uppercase-letter
 
 (unless (boundp '+uppercase-letters+)
@@ -51,6 +56,13 @@
     ;; https://www.w3.org/TR/css-syntax-3/#name-start-code-point
     (or (non-ascii-code-point-p char)
         (values (gethash char name-start-code-point)))))
+
+(let ((name-code-point
+       (uiop:list-to-hash-set (concatenate 'list "-" +digits+))))
+  (defun name-code-point-p (char)
+    ;; https://www.w3.org/TR/css-syntax-3/#name-code-point
+    (or (name-start-code-point-p char)
+        (values (gethash char name-code-point)))))
 
 ;;;; 4.3.12. Consume a number
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-a-number
