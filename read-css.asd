@@ -2,9 +2,11 @@
 (in-package :asdf)
 (defsystem "read-css"
   :version
-  "0.4.0"
+  "0.5.0"
   :depends-on
-  nil
+  (
+   "uiop"               ; Utilities.
+   )
   :pathname
   "src/"
   :components
