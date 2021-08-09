@@ -107,12 +107,14 @@
 ;;;; 4.3.11. Consume a name
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-name
 
-(defun consume-a-name (&optional stream eof-errorp eof-value)
+(defun consume-a-name
+       (&optional (input *standard-input*) (eof-errorp t) eof-value
+        &aux (input (ensure-input-stream input)))
   (with-output-to-string (*standard-output*)
-    (loop :for c = (read-char stream nil nil)
+    (loop :for c = (read-char input nil nil)
           :if (null c)
             :do (if eof-errorp
-                    (error 'css-parse-error :stream stream)
+                    (error 'css-parse-error :stream input)
                     (return-from consume-a-name eof-value))
           :else :if (name-code-point-p c)
             :do (write-char c)
