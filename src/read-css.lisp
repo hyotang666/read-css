@@ -139,7 +139,7 @@
           ((or (char= #\- next)
                (name-start-code-point-p next)
                (char= #\\ next))
-           (unread-char next)
+           (unread-char next input)
            (make-dimension-token :type :number
                                  :value number
                                  :unit (consume-a-name input nil "")))
@@ -167,7 +167,7 @@
 ;;;; READERS
 
 (defun |+--reader| (stream character)
-  (unread-char character)
+  (unread-char character stream)
   (consume-a-numeric-token stream))
 
 (defun |/*-reader| (stream character number)
@@ -199,7 +199,7 @@
         (cond
           (reader-macro (funcall (coerce reader-macro 'function) input char))
           ((digit-char-p char 10)
-           (unread-char char)
+           (unread-char char input)
            (consume-a-numeric-token input))
           (t (read input eof-error-p eof-value)))))))
 
