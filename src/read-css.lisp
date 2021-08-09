@@ -18,6 +18,31 @@
   ;; https://www.w3.org/TR/css-syntax-3/#non-ascii-code-point
   (<= #x80 (char-code char)))
 
+;;;; CONSTANTS
+;; https://www.w3.org/TR/css-syntax-3/#uppercase-letter
+
+(unless (boundp '+uppercase-letters+)
+  (defconstant +uppercase-letters+
+    (coerce
+      (loop :for code :upfrom (char-code #\A) :to (char-code #\Z)
+            :collect (code-char code))
+      'string)))
+
+;; https://www.w3.org/TR/css-syntax-3/#lowercase-letter
+
+(unless (boundp '+lowercase-letters+)
+  (defconstant +lowercase-letters+
+    (coerce
+      (loop :for code :upfrom (char-code #\a) :to (char-code #\z)
+            :collect (code-char code))
+      'string)))
+
+;; https://www.w3.org/TR/css-syntax-3/#letter
+
+(unless (boundp '+letters+)
+  (defconstant +letters+
+    (concatenate 'string +uppercase-letters+ +lowercase-letters+)))
+
 ;;;; 4.3.12. Consume a number
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-a-number
 
