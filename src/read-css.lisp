@@ -103,3 +103,20 @@
        (&optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
   (read input))
+
+;;;; 4.3.11. Consume a name
+;;; https://www.w3.org/TR/css-syntax-3/#consume-name
+
+(defun consume-a-name (&optional stream eof-errorp eof-value)
+  (with-output-to-string (*standard-output*)
+    (loop :for c = (read-char stream nil nil)
+          :if (null c)
+            :do (if eof-errorp
+                    (error 'css-parse-error :stream stream)
+                    (return-from consume-a-name eof-value))
+          :else :if (name-code-point-p c)
+            :do (write-char c)
+          :else :if (char= #\\ c)
+            :do (write-char (consume-an-escaped-code-point input))
+          :else
+            :do (loop-finish))))
