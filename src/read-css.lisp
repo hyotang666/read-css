@@ -145,3 +145,22 @@
                                  :unit (consume-a-name input nil "")))
           ((char= #\% next) (make-percentage-token :value number))
           (t number))))
+
+(defun read-style
+       (&optional (input *standard-input*) (eof-error-p t) eof-value
+        &aux (input (ensure-input-stream input)))
+  (handler-case (read-char input)
+    (end-of-file (c)
+      (if eof-error-p
+          (error c)
+          eof-value))
+    (:no-error (char)
+      (multiple-value-bind (reader-macro non-terminating-p)
+          (get-macro-character char)
+        (declare (ignore non-terminating-p))
+        (cond
+          (reader-macro (funcall (coerce reader-macro 'function) input char))
+          ((digit-char-p char 10)
+           (unread-char char)
+           (consume-a-numeric-token input))
+          (t (read input eof-error-p eof-value)))))))
