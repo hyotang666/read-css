@@ -1,8 +1,61 @@
 (defpackage :read-css.spec
   (:use :cl :jingoh :read-css)
-  (:import-from :read-css #:read-css))
+  (:import-from :read-css #:read-css #:consume-a-number))
 (in-package :read-css.spec)
 (setup :read-css)
+
+(requirements-about CONSUME-A-NUMBER :doc-type function)
+
+;;;; Description:
+; read number.
+
+#+syntax (CONSUME-A-NUMBER &optional (input *standard-input*)) ; => result
+
+;;;; Arguments and Values:
+
+; input := 
+
+; result := 
+
+;;;; Affected By:
+
+;;;; Side-Effects:
+
+;;;; Notes:
+
+;;;; Exceptional-Situations:
+
+;;;; Tests:
+; Integer.
+#?(with-input-from-string (in "1") (consume-a-number in)) => 1
+#?(with-input-from-string (in "+1") (consume-a-number in)) => 1
+#?(with-input-from-string (in "-1") (consume-a-number in)) => -1
+
+; Flort.
+#?(with-input-from-string (in "1.0") (consume-a-number in)) => 1.0
+#?(with-input-from-string (in "+1.0") (consume-a-number in)) => 1.0
+#?(with-input-from-string (in "-1.0") (consume-a-number in)) => -1.0
+
+; Exponential.
+; With lower e.
+#?(with-input-from-string (in "1.0e5") (consume-a-number in)) => 1.0e5
+#?(with-input-from-string (in "1.0e+5") (consume-a-number in)) => 1.0e5
+#?(with-input-from-string (in "1.0e-5") (consume-a-number in)) => 1.0e-5
+#?(with-input-from-string (in "+1.0e-5") (consume-a-number in)) => 1.0e-5
+#?(with-input-from-string (in "-1.0e-5") (consume-a-number in)) => -1.0e-5
+
+; With upper E.
+#?(with-input-from-string (in "1.0E5") (consume-a-number in)) => 1.0e5
+#?(with-input-from-string (in "1.0E+5") (consume-a-number in)) => 1.0e5
+#?(with-input-from-string (in "1.0E-5") (consume-a-number in)) => 1.0e-5
+#?(with-input-from-string (in "+1.0E-5") (consume-a-number in)) => 1.0e-5
+#?(with-input-from-string (in "-1.0E-5") (consume-a-number in)) => -1.0e-5
+
+; Unlinke CL:READ, next char is remain.
+#?(with-input-from-string (in "1 2") (values (read in) (read-char in)))
+:values (1 #\2)
+#?(with-input-from-string (in "1 2") (values (consume-a-number in) (read-char in)))
+:values (1 #\space)
 
 (requirements-about READ-CSS :doc-type function)
 
