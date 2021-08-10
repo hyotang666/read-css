@@ -199,6 +199,16 @@
 ,:test equal
 
 ; Signed integer.
+#?(with-input-from-string (in "+1")
+    (read-css in))
+=> (1)
+,:test equal
+
+#?(with-input-from-string (in "-1")
+    (read-css in))
+=> (-1)
+,:test equal
+
 #?(with-input-from-string (in "+1 -1")
     (read-css in))
 => (1 -1)
