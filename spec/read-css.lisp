@@ -1,6 +1,6 @@
 (defpackage :read-css.spec
   (:use :cl :jingoh :read-css)
-  (:import-from :read-css #:read-css #:consume-a-number
+  (:import-from :read-css #:read-css #:consume-a-number #:consume-a-numeric-token
 		#:consume-a-name))
 (in-package :read-css.spec)
 (setup :read-css)
@@ -98,6 +98,65 @@
 :values (1 #\2)
 #?(with-input-from-string (in "1 2") (values (consume-a-number in) (read-char in)))
 :values (1 #\space)
+
+(requirements-about CONSUME-A-NUMERIC-TOKEN :doc-type function)
+
+;;;; Description:
+
+#+syntax (CONSUME-A-NUMERIC-TOKEN &optional (input *standard-input*))
+; => result
+
+;;;; Arguments and Values:
+
+; input := 
+
+; result := 
+
+;;;; Affected By:
+
+;;;; Side-Effects:
+
+;;;; Notes:
+
+;;;; Exceptional-Situations:
+
+;;;; Tests:
+; Integer
+#?(with-input-from-string (in "1") (consume-a-numeric-token in))
+=> 1
+#?(with-input-from-string (in "+1") (consume-a-numeric-token in))
+=> 1
+#?(with-input-from-string (in "-1") (consume-a-numeric-token in))
+=> -1
+
+; Float.
+#?(with-input-from-string (in "1.0") (consume-a-numeric-token in))
+=> 1.0
+#?(with-input-from-string (in "+1.0") (consume-a-numeric-token in))
+=> 1.0
+#?(with-input-from-string (in "-1.0") (consume-a-numeric-token in))
+=> -1.0
+
+; Exponention.
+#?(with-input-from-string (in "1.0e5") (consume-a-numeric-token in))
+=> 1.0e5
+#?(with-input-from-string (in "+1.0e+5") (consume-a-numeric-token in))
+=> 1.0e+5
+#?(with-input-from-string (in "-1.0e-5") (consume-a-numeric-token in))
+=> -1.0e-5
+
+; Percentage token.
+#?(with-input-from-string (in "50%") (consume-a-numeric-token in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::percentage-token)
+		(eql 50 (read-css::percentage-token-value result))))
+
+; Dimension token.
+#?(with-input-from-string (in "10px") (consume-a-numeric-token in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::dimension-token)
+		(eql 10 (read-css::dimension-token-value result))
+		(equal "px" (read-css::dimension-token-unit result))))
 
 (requirements-about READ-CSS :doc-type function)
 
