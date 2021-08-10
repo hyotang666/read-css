@@ -156,16 +156,17 @@
 (defun consume-a-numeric-token
        (&optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
-  (let ((number (consume-a-number input)) (next (read-char input nil nil)))
+  (let ((number (consume-a-number input)) (next (peek-char nil input nil nil)))
     (cond ((null next) number)
           ((or (char= #\- next)
                (name-start-code-point-p next)
                (char= #\\ next))
-           (unread-char next input)
            (make-dimension-token :type :number
                                  :value number
-                                 :unit (consume-a-name input nil "")))
-          ((char= #\% next) (make-percentage-token :value number))
+                                 :unit (consume-a-name input)))
+          ((char= #\% next)
+           (read-char input) ; discard %
+           (make-percentage-token :value number))
           (t number))))
 
 ;;;; 4.3.2. Consume comments
