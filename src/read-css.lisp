@@ -190,8 +190,8 @@
 ;;;; READERS
 
 (defun |+--reader| (stream character)
-  (unread-char character stream)
-  (consume-a-numeric-token stream))
+  (funcall (coerce (find-symbol (string character) :cl) 'function)
+           (consume-a-numeric-token stream)))
 
 (defun |/*-reader| (stream character number)
   (declare (ignore character number))
