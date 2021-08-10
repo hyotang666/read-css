@@ -224,7 +224,9 @@
           ((digit-char-p char 10)
            (unread-char char input)
            (consume-a-numeric-token input))
-          (t (read input eof-error-p eof-value)))))))
+          (t
+           (unread-char char input)
+           (read input eof-error-p eof-value)))))))
 
 (declaim
  (ftype (function (&optional (or boolean stream))
