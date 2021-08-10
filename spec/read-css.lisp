@@ -36,6 +36,11 @@
 #?(with-input-from-string (in "+1.0") (consume-a-number in)) => 1.0
 #?(with-input-from-string (in "-1.0") (consume-a-number in)) => -1.0
 
+; Start with dot.
+#?(with-input-from-string (in ".5") (consume-a-number in)) => 0.5
+#?(with-input-from-string (in "+.5") (consume-a-number in)) => 0.5
+#?(with-input-from-string (in "-.5") (consume-a-number in)) => -0.5
+
 ; Exponential.
 ; With lower e.
 #?(with-input-from-string (in "1.0e5") (consume-a-number in)) => 1.0e5
