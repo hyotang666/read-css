@@ -189,10 +189,6 @@
 
 ;;;; READERS
 
-(defun |+--reader| (stream character)
-  (funcall (coerce (find-symbol (string character) :cl) 'function)
-           (consume-a-numeric-token stream)))
-
 (defun |/*-reader| (stream character number)
   (declare (ignore character number))
   (consume-comments stream))
@@ -201,16 +197,14 @@
 
 (named-readtables:defreadtable css-readtable
   (:macro-char #\/ :dispatch)
-  (:dispatch-macro-char #\/ #\* '|/*-reader|)
-  (:macro-char #\+ '|+--reader|)
-  (:macro-char #\- '|+--reader|))
+  (:dispatch-macro-char #\/ #\* '|/*-reader|))
 
 ;;;; READ-CSS
 
 (defun read-style
        (&optional (input *standard-input*) (eof-error-p t) eof-value
         &aux (input (ensure-input-stream input)))
-  (handler-case (read-char input)
+  (handler-case (peek-char t input) ; to discard white spaces.
     (end-of-file (c)
       (if eof-error-p
           (error c)
@@ -220,13 +214,12 @@
           (get-macro-character char)
         (declare (ignore non-terminating-p))
         (cond
-          (reader-macro (funcall (coerce reader-macro 'function) input char))
-          ((digit-char-p char 10)
-           (unread-char char input)
+          (reader-macro
+           (funcall (coerce reader-macro 'function) input
+                    (read-char input #| actually read |#)))
+          ((or (find char "+-") (digit-char-p char 10))
            (consume-a-numeric-token input))
-          (t
-           (unread-char char input)
-           (read input eof-error-p eof-value)))))))
+          (t (read input eof-error-p eof-value)))))))
 
 (declaim
  (ftype (function (&optional (or boolean stream))
