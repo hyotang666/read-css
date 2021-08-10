@@ -1,8 +1,45 @@
 (defpackage :read-css.spec
   (:use :cl :jingoh :read-css)
-  (:import-from :read-css #:read-css #:consume-a-number))
+  (:import-from :read-css #:read-css #:consume-a-number
+		#:consume-a-name))
 (in-package :read-css.spec)
 (setup :read-css)
+
+(requirements-about CONSUME-A-NAME :doc-type function :test equal)
+
+;;;; Description:
+
+#+syntax (CONSUME-A-NAME &optional (input *standard-input*)) ; => result
+
+;;;; Arguments and Values:
+
+; input := 
+
+; result := 
+
+;;;; Affected By:
+
+;;;; Side-Effects:
+
+;;;; Notes:
+
+;;;; Exceptional-Situations:
+
+;;;; Tests:
+#?(with-input-from-string (in "name")
+    (consume-a-name in))
+=> "name"
+
+; With escape.
+#?(with-input-from-string (in "foo\\26 bar")
+    (consume-a-name in))
+=> "foo&bar"
+#?(with-input-from-string (in "foo\\000026bar")
+    (consume-a-name in))
+=> "foo&bar"
+#?(with-input-from-string (in "foo\\0000267bar")
+    (consume-a-name in))
+=> "foo&7bar"
 
 (requirements-about CONSUME-A-NUMBER :doc-type function)
 

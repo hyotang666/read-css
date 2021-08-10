@@ -129,20 +129,19 @@
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-name
 
 (defun consume-a-name
-       (&optional (input *standard-input*) (eof-errorp t) eof-value
+       (&optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
   (with-output-to-string (*standard-output*)
     (loop :for c = (read-char input nil nil)
           :if (null c)
-            :do (if eof-errorp
-                    (error 'css-parse-error :stream input)
-                    (return-from consume-a-name eof-value))
+            :do (loop-finish)
           :else :if (name-code-point-p c)
             :do (write-char c)
           :else :if (char= #\\ c)
             :do (write-char (consume-an-escaped-code-point input))
           :else
-            :do (loop-finish))))
+            :do (unread-char c input)
+                (loop-finish))))
 
 ;;;; 4.3.3. Consume a numeric token
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-numeric-token
