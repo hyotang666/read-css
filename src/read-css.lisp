@@ -55,6 +55,18 @@
 (unless (boundp '+newlines+)
   (defconstant +newlines+ (coerce '(#\Newline #\Return #\Page) 'string)))
 
+;; https://www.w3.org/TR/css-syntax-3/#non-printable-code-point
+
+(unless (boundp '+non-printable-code-point+)
+  (defconstant +non-printable-code-point+
+    (concatenate 'list
+                 (loop :for i :upfrom 0 :to 8
+                       :collect (code-char i))
+                 (string #\Tab)
+                 (loop :for i :upfrom #xE :to #x1F
+                       :collect (code-char i))
+                 (string (code-char #x7F)))))
+
 ;;;; PREDICATES
 
 (let ((name-start-code-point
@@ -70,6 +82,11 @@
     ;; https://www.w3.org/TR/css-syntax-3/#name-code-point
     (or (name-start-code-point-p char)
         (values (gethash char name-code-point)))))
+
+(let ((non-printable-code-point
+       (uiop:list-to-hash-set +non-printable-code-point+)))
+  (defun non-printable-code-point-p (char)
+    (values (gethash char non-printable-code-point))))
 
 ;;;; CONSUMERS
 ;;;; 4.3.7. Consume an escaped code point
@@ -214,6 +231,78 @@
             :do (let ((end? (! (read-char input))))
                   (when (char= #\/ end?)
                     (return (values)))))))
+
+;;;; 4.3.14. Consume the remnants of a bad url
+;;; https://www.w3.org/TR/css-syntax-3/#consume-the-remnants-of-a-bad-url
+
+(defun consume-the-remnants-of-a-bad-url
+       (&optional (input *standard-input*)
+        &aux (input (ensure-input-stream input)))
+  (loop :for c = (read-char input nil nil)
+        :if (or (null c) (char= #\) c))
+          :do (loop-finish)
+        :else :if (char= #\\ c)
+          :do (handler-case (consume-an-escaped-code-point input)
+                (css-parse-error ()))
+              ;; Discar c
+              )
+  (values))
+
+;;;; 4.3.6. Consume a url token
+;;; https://www.w3.org/TR/css-syntax-3/#consume-url-token
+
+(defstruct url-token (value (error "VALUE is required.") :type string))
+
+(defstruct bad-url-token (value (error "VALUE is required.") :type string))
+
+(defun consume-a-url-token
+       (&optional (input *standard-input*)
+        &aux (input (ensure-input-stream input)))
+  ;; Note: This algorithm assumes that the initial "url(" has already been consumed.
+  ;; This algorithm also assumes that it’s being called to consume an "unquoted" value, like url(foo).
+  ;; A quoted value, like url("foo"), is parsed as a <function-token>.
+  ;; Consume an ident-like token automatically handles this distinction;
+  ;; this algorithm shouldn’t be called directly otherwise.
+  (peek-char t input) ; to discard white spaces.
+  (let* ((bad-url-p)
+         (string
+          (with-output-to-string (*standard-output*)
+            (loop :for c = (read-char input nil nil)
+                  :if (null c)
+                    :do (signal 'css-parse-error :stream input)
+                        (loop-finish)
+                  :else :if (char= #\) c)
+                    :do (loop-finish)
+                  :else :if (find c +white-spaces+)
+                    :do (let ((next (peek-char t input nil nil)))
+                          (cond
+                            ((null next)
+                             (signal 'css-parse-error :stream input)
+                             (loop-finish))
+                            ((char= #\) next) (loop-finish))
+                            (t
+                             (consume-the-remnants-of-a-bad-url input)
+                             (setf bad-url-p t)
+                             (loop-finish))))
+                  :else :if (or (find c "\"'(") (non-printable-code-point-p c))
+                    :do (signal 'css-parse-error :stream input)
+                        (consume-the-remnants-of-a-bad-url input)
+                        (setf bad-url-p t)
+                        (loop-finish)
+                  :else :if (char= #\\ c)
+                    :do (handler-case (consume-an-escaped-code-point input)
+                          (css-parse-error (c)
+                            (signal c)
+                            (consume-the-remnants-of-a-bad-url input)
+                            (setf bad-url-p t)
+                            (loop-finish))
+                          (:no-error (char)
+                            (write-char char)))
+                  :else
+                    :do (write-char c)))))
+    (if bad-url-p
+        (make-bad-url-token :value string)
+        (make-url-token :value string))))
 
 ;;;; READERS
 

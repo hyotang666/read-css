@@ -1,7 +1,8 @@
 (defpackage :read-css.spec
   (:use :cl :jingoh :read-css)
   (:import-from :read-css #:read-css #:consume-a-number #:consume-a-numeric-token
-		#:consume-a-name #:consume-an-escaped-code-point))
+		#:consume-a-name #:consume-a-url-token
+		#:consume-an-escaped-code-point))
 (in-package :read-css.spec)
 (setup :read-css)
 
@@ -155,6 +156,54 @@
 :values (1 #\2)
 #?(with-input-from-string (in "1 2") (values (consume-a-number in) (read-char in)))
 :values (1 #\space)
+
+(requirements-about CONSUME-A-URL-TOKEN :doc-type function)
+
+;;;; Description:
+
+#+syntax (CONSUME-A-URL-TOKEN &optional (input *standard-input*)) ; => result
+
+;;;; Arguments and Values:
+
+; input := 
+
+; result := 
+
+;;;; Affected By:
+
+;;;; Side-Effects:
+
+;;;; Notes:
+
+;;;; Exceptional-Situations:
+
+;;;; Tests:
+#?(with-input-from-string (in "https://example.com/images/myImg.jpg)")
+    (consume-a-url-token in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::url-token)
+		(equal "https://example.com/images/myImg.jpg"
+		       (read-css::url-token-value result))))
+
+#?(with-input-from-string (in "myFont.woff)")
+    (consume-a-url-token in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::url-token)
+		(equal "myFont.woff" (read-css::url-token-value result))))
+
+#?(with-input-from-string (in "#IDofSVGpath)")
+    (consume-a-url-token in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::url-token)
+		(equal "#IDofSVGpath" (read-css::url-token-value result))))
+
+; Does not handle quoted string.
+#?(with-input-from-string (in "\"star.gif\")")
+    (consume-a-url-token in))
+:signals read-css::css-parse-error
+#?(with-input-from-string (in "'star.gif')")
+    (consume-a-url-token in))
+:signals read-css::css-parse-error
 
 (requirements-about CONSUME-A-NUMERIC-TOKEN :doc-type function)
 
