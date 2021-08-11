@@ -108,36 +108,36 @@
        (&optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
   ;; NOTE: escape char is already read.
-  (let ((code
-         (let ((*read-base* 16))
-           (read-from-string
-             (with-output-to-string (*standard-output*)
-               (loop :repeat 6
-                     :for c
-                          = (let ((c (read-char input nil nil)))
-                              (when (null c)
-                                (error 'css-parse-error :stream input))
-                              (when (find c +newlines+)
-                                ;; NOTE: newline is consumed.
-                                (error 'invalid-escape
-                                       :stream input
-                                       :character c))
-                              c)
-                          :then (read-char input nil nil)
-                     :if (null c)
-                       :do (loop-finish)
-                     :else :if (digit-char-p c 16)
-                       :do (write-char c)
-                     :else :if (char= #\Space c)
-                       :do (loop-finish)
-                     :else
-                       :do (write (char-code c) :base 16)
-                           (loop-finish)))
-             nil nil))))
+  (let ((c (read-char input nil nil)))
     (cond
-      ((or (< +maximum-allowed-code-point+ code) (= 0 code) (surrogatep code))
-       (code-char #xFFFD))
-      (t (code-char code)))))
+      ((null c)
+       (signal 'css-parse-error :stream input)
+       #.(code-char #xFFFD))
+      ((digit-char-p c 16)
+       (let ((code
+              (let ((*read-base* 16))
+                (read-from-string
+                  (with-output-to-string (*standard-output*)
+                    (write-char c)
+                    (loop :repeat 5
+                          :for c = (read-char input nil nil)
+                          :if (null c)
+                            :do (loop-finish)
+                          :else :if (digit-char-p c 16)
+                            :do (write-char c)
+                          :else :if (char= #\Space c)
+                            :do (loop-finish)
+                          :else
+                            :do (unread-char c input)
+                                (loop-finish)))))))
+         (cond
+           ((or (< +maximum-allowed-code-point+ code)
+                (= 0 code)
+                (surrogatep code))
+            #.(code-char #xFFFD))
+           (t (code-char code)))))
+      ((find c +newlines+) (error 'invalid-escape :stream input :character c))
+      (t c))))
 
 ;;;; 4.3.12. Consume a number
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-a-number
