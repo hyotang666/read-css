@@ -1,9 +1,66 @@
 (defpackage :read-css.spec
   (:use :cl :jingoh :read-css)
   (:import-from :read-css #:read-css #:consume-a-number #:consume-a-numeric-token
-		#:consume-a-name))
+		#:consume-a-name #:consume-an-escaped-code-point))
 (in-package :read-css.spec)
 (setup :read-css)
+
+(requirements-about CONSUME-AN-ESCAPED-CODE-POINT :doc-type function)
+
+;;;; Description:
+
+#+syntax (CONSUME-AN-ESCAPED-CODE-POINT &optional (input *standard-input*))
+; => result
+
+;;;; Arguments and Values:
+
+; input := 
+
+; result := 
+
+;;;; Affected By:
+
+;;;; Side-Effects:
+
+;;;; Notes:
+
+;;;; Exceptional-Situations:
+
+;;;; Tests:
+; Case hex digits.
+#?(with-input-from-string (in "26") (consume-an-escaped-code-point in))
+=> #\&
+#?(with-input-from-string (in "000026") (consume-an-escaped-code-point in))
+=> #\&
+
+; Case nonsense escaping.
+#?(with-input-from-string (in "g") (consume-an-escaped-code-point in))
+=> #\g
+
+; Case end-of-file.
+#?(with-input-from-string (in "") (consume-an-escaped-code-point in))
+:signals end-of-file
+
+; Case newlines.
+#?(with-input-from-string (in (string #\newline)) (consume-an-escaped-code-point in))
+:signals read-css::invalid-escape
+
+; Case #\nul
+#?(with-input-from-string (in "0") (consume-an-escaped-code-point in))
+=> #.(code-char #xFFFD)
+
+; Case over unicode point.
+#?(with-input-from-string (in "FFFFFF") (consume-an-escaped-code-point in))
+=> #.(code-char #xFFFD)
+
+; Case surrogate.
+#?(with-input-from-string (in "D800") (consume-an-escaped-code-point in))
+=> #.(code-char #xFFFD)
+
+; When hex num is less than six and followed space, such space is consumed well.
+#?(with-input-from-string (in "26 a") (values (consume-an-escaped-code-point in)
+					      (read-char in nil nil)))
+:values (#\& #\a)
 
 (requirements-about CONSUME-A-NAME :doc-type function :test equal)
 

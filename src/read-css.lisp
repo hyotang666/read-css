@@ -50,6 +50,11 @@
     (defconstant +letters+
       (concatenate 'string +uppercase-letters+ +lowercase-letters+))))
 
+;; https://www.w3.org/TR/css-syntax-3/#newline
+
+(unless (boundp '+newlines+)
+  (defconstant +newlines+ (coerce '(#\Newline #\Return #\Page) 'string)))
+
 ;;;; PREDICATES
 
 (let ((name-start-code-point
@@ -69,6 +74,12 @@
 ;;;; CONSUMERS
 ;;;; 4.3.7. Consume an escaped code point
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-an-escaped-code-point
+;; Unlike specification, we does not check valid escape before due to
+;; difficulty of two or more UNREAD-CHAR.
+;; Instead of it, we signals INVALID-ESCAPE.
+
+(define-condition invalid-escape (css-parse-error)
+  ((character :initarg :character :reader invalid-escape-character)))
 
 (defconstant +maximum-allowed-code-point+ #x10FFFF)
 
@@ -79,16 +90,33 @@
 (defun consume-an-escaped-code-point
        (&optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
+  ;; NOTE: escape char is already read.
   (let ((code
          (let ((*read-base* 16))
            (read-from-string
              (with-output-to-string (*standard-output*)
                (loop :repeat 6
-                     :for c = (read-char input)
-                     :if (digit-char-p c 16)
+                     :for c
+                          = (let ((c (read-char input nil nil)))
+                              (when (null c)
+                                (error 'css-parse-error :stream input))
+                              (when (find c +newlines+)
+                                ;; NOTE: newline is consumed.
+                                (error 'invalid-escape
+                                       :stream input
+                                       :character c))
+                              c)
+                          :then (read-char input nil nil)
+                     :if (null c)
+                       :do (loop-finish)
+                     :else :if (digit-char-p c 16)
                        :do (write-char c)
                      :else :if (char= #\Space c)
-                       :do (loop-finish)))))))
+                       :do (loop-finish)
+                     :else
+                       :do (write (char-code c) :base 16)
+                           (loop-finish)))
+             nil nil))))
     (cond
       ((or (< +maximum-allowed-code-point+ code) (= 0 code) (surrogatep code))
        (code-char #xFFFD))
