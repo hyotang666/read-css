@@ -55,6 +55,12 @@
 (unless (boundp '+newlines+)
   (defconstant +newlines+ (coerce '(#\Newline #\Return #\Page) 'string)))
 
+;; https://www.w3.org/TR/css-syntax-3/#newline
+
+(unless (boundp '+white-spaces+)
+  (defconstant +white-spaces+
+    (concatenate 'string +newlines+ '(#\Tab #\Space))))
+
 ;; https://www.w3.org/TR/css-syntax-3/#non-printable-code-point
 
 (unless (boundp '+non-printable-code-point+)
