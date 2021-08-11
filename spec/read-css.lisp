@@ -2,7 +2,8 @@
   (:use :cl :jingoh :read-css)
   (:import-from :read-css #:read-css #:consume-a-number #:consume-a-numeric-token
 		#:consume-a-name #:consume-a-url-token
-		#:consume-an-escaped-code-point))
+		#:consume-an-escaped-code-point #:consume-a-string-token
+		))
 (in-package :read-css.spec)
 (setup :read-css)
 
@@ -263,6 +264,93 @@
 	     (& (typep result 'read-css::dimension-token)
 		(eql 10 (read-css::dimension-token-value result))
 		(equal "px" (read-css::dimension-token-unit result))))
+
+(requirements-about CONSUME-A-STRING-TOKEN :doc-type function)
+
+;;;; Description:
+
+#+syntax (CONSUME-A-STRING-TOKEN character &optional (input *standard-input*))
+; => result
+
+;;;; Arguments and Values:
+
+; character := 
+
+; input := 
+
+; result := 
+
+;;;; Affected By:
+
+;;;; Side-Effects:
+
+;;;; Notes:
+
+;;;; Exceptional-Situations:
+
+;;;; Tests:
+; Case escaped backquote.
+#?(with-input-from-string (in "\\\"\"") (consume-a-string-token #\" in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::string-token)
+		(equal "\"" (read-css::string-token-value result))))
+
+; Case hex digits just followed end char.
+#?(with-input-from-string (in "\\22\"") (consume-a-string-token #\" in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::string-token)
+		(equal "\"" (read-css::string-token-value result))))
+
+; Case hex digits just followed space.
+#?(with-input-from-string (in "\\22 \"") (consume-a-string-token #\" in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::string-token)
+		(equal "\"" (read-css::string-token-value result))))
+
+; Case hex digits max.
+#?(with-input-from-string (in "\\0000278\"") (consume-a-string-token #\" in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::string-token)
+		(equal "'8" (read-css::string-token-value result))))
+
+; Case copyright symbol.
+#?(with-input-from-string (in "\\A9\"") (consume-a-string-token #\" in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::string-token)
+		(equal #.(string (code-char #xA9))
+		       (read-css::string-token-value result))))
+
+; Case backslash.
+#?(with-input-from-string (in "\\\\\"") (consume-a-string-token #\" in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::string-token)
+		(equal "\\" (read-css::string-token-value result))))
+
+; Case newline.
+#?(with-input-from-string (in "foo\\A bar\"") (consume-a-string-token #\" in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::string-token)
+		(equal #.(format nil "foo~%bar")
+		       (read-css::string-token-value result))))
+
+; Case string spanning.
+#?(with-input-from-string (in (format nil "foo\\~%bar\"")) (consume-a-string-token #\" in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::string-token)
+		(equal "foobar" (read-css::string-token-value result))))
+
+; Case missing end char.
+#?(with-input-from-string (in "") (consume-a-string-token #\" in))
+:signals read-css::css-parse-error
+#?(with-input-from-string (in "") (consume-a-string-token #\" in))
+:invokes-debugger not
+
+; Case bad newline.
+#?(with-input-from-string (in (format nil "foo~%bar\"")) (consume-a-string-token #\" in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::bad-string-token)
+		(equal "foo" (read-css::bad-string-token-value result))))
+,:ignore-signals nil
 
 (requirements-about READ-CSS :doc-type function)
 

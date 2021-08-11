@@ -304,17 +304,57 @@
         (make-bad-url-token :value string)
         (make-url-token :value string))))
 
+;;;; 4.3.5. Consume a string token
+;;; https://www.w3.org/TR/css-syntax-3/#consume-string-token
+
+(defstruct string-token (value (error "VALUE is required.") :type string))
+
+(defstruct bad-string-token (value (error "VALUE is required.") :type string))
+
+(defun consume-a-string-token
+       (character
+        &optional (input *standard-input*)
+        &aux (input (ensure-input-stream input)))
+  (let* ((bad-string-p)
+         (contents
+          (with-output-to-string (*standard-output*)
+            (loop :for char = (read-char input nil nil)
+                  :if (null char)
+                    :do (signal 'css-parse-error :stream input)
+                        (loop-finish)
+                  :else :if (char= char character)
+                    :do (loop-finish)
+                  :else :if (find char +newlines+)
+                    :do (signal 'css-parse-error :stream input)
+                        (unread-char char input)
+                        (setf bad-string-p t)
+                        (loop-finish)
+                  :else :if (char= #\\ char)
+                    :do (handler-case (consume-an-escaped-code-point input)
+                          (css-parse-error ()) ; do-nothing.
+                          (:no-error (c)
+                            (write-char c)))
+                  :else
+                    :do (write-char char)))))
+    (if bad-string-p
+        (make-bad-string-token :value contents)
+        (make-string-token :value contents))))
+
 ;;;; READERS
 
 (defun |/*-reader| (stream character number)
   (declare (ignore character number))
   (consume-comments stream))
 
+(defun |"-reader| (stream character) (consume-a-string-token character stream))
+
 ;;;; CSS-READTABLE
 
 (named-readtables:defreadtable css-readtable
   (:macro-char #\/ :dispatch)
-  (:dispatch-macro-char #\/ #\* '|/*-reader|))
+  (:dispatch-macro-char #\/ #\* '|/*-reader|)
+  (:macro-char #\" '|"-reader|)
+  (:macro-char #\' '|"-reader|))
 
 ;;;; READ-CSS
 
