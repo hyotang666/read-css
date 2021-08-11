@@ -87,18 +87,28 @@
 ;;;; Tests:
 #?(with-input-from-string (in "name")
     (consume-a-name in))
-=> "name"
+:values ("name" t)
 
 ; With escape.
 #?(with-input-from-string (in "foo\\26 bar")
     (consume-a-name in))
-=> "foo&bar"
+:values ("foo&bar" t)
 #?(with-input-from-string (in "foo\\000026bar")
     (consume-a-name in))
-=> "foo&bar"
+:values ("foo&bar" t)
 #?(with-input-from-string (in "foo\\0000267bar")
     (consume-a-name in))
-=> "foo&7bar"
+:values ("foo&7bar" t)
+
+; Case false second value.
+#?(with-input-from-string (in "-+foo") (consume-a-name in))
+:values ("-+foo" nil)
+
+#?(with-input-from-string (in (format nil "-\\~%foo")) (consume-a-name in))
+:values ("-" nil)
+
+#?(with-input-from-string (in (format nil "1234")) (consume-a-name in))
+:values ("1234" nil)
 
 (requirements-about CONSUME-A-NUMBER :doc-type function)
 

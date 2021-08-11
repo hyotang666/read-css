@@ -208,21 +208,60 @@
 
 ;;;; 4.3.11. Consume a name
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-name
+;;;; 4.3.9. Check if three code points would start an identifier
+;;; https://www.w3.org/TR/css-syntax-3/#would-start-an-identifier
+;; Unlike specification, we implement two functions as one due to
+;; hard to UNREAD-CHAR two or more times.
+;; Fortunately common lisp has multiple values.
 
 (defun consume-a-name
        (&optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
-  (with-output-to-string (*standard-output*)
-    (loop :for c = (read-char input nil nil)
-          :if (null c)
-            :do (loop-finish)
-          :else :if (name-code-point-p c)
-            :do (write-char c)
-          :else :if (char= #\\ c)
-            :do (write-char (consume-an-escaped-code-point input))
-          :else
-            :do (unread-char c input)
-                (loop-finish))))
+  (let (idp)
+    (labels ((first-char (char)
+               (cond ((null char))
+                     ((char= #\- char)
+                      (write-char char)
+                      (second-char (read-char input nil nil)))
+                     ((name-start-code-point-p char)
+                      (write-char char)
+                      (setf idp t)
+                      (rest-name))
+                     ((char= #\\ char) (valid-escape?))
+                     (t
+                      (write-char char)
+                      (rest-name))))
+             (second-char (char)
+               (cond ((null char))
+                     ((or (name-start-code-point-p char) (char= #\- char))
+                      (write-char char)
+                      (setf idp t)
+                      (rest-name))
+                     ((char= #\\ char) (valid-escape?))
+                     (t
+                      (write-char char)
+                      (rest-name))))
+             (rest-name ()
+               (loop :for c = (read-char input nil nil)
+                     :if (null c)
+                       :do (loop-finish)
+                     :else :if (name-code-point-p c)
+                       :do (write-char c)
+                     :else :if (char= #\\ c)
+                       :do (write-char (consume-an-escaped-code-point input))
+                     :else
+                       :do (unread-char c input)
+                           (loop-finish)))
+             (valid-escape? ()
+               (handler-case (consume-an-escaped-code-point input)
+                 (invalid-escape ())
+                 (:no-error (c)
+                   (write-char c)
+                   (setf idp t)
+                   (rest-name)))))
+      (values (with-output-to-string (*standard-output*)
+                (first-char (read-char input nil nil)))
+              idp))))
 
 ;;;; 4.3.3. Consume a numeric token
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-numeric-token
