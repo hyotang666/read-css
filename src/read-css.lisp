@@ -421,6 +421,27 @@
         (make-bad-url-token :value string)
         (make-url-token :value string))))
 
+;;;; 4.3.4. Consume an ident-like token
+;;; https://www.w3.org/TR/css-syntax-3/#consume-ident-like-token
+
+(defstruct (ident-token (:include string-token)))
+
+(defun consume-an-ident-like-token
+       (&optional (input *standard-input*)
+        &aux (input (ensure-input-stream input)))
+  (let ((name (consume-a-name input)) (next (read-char input nil nil)))
+    (cond
+      ((and (equalp "url" name) (eql #\( next))
+       (let ((peek (peek-char t input nil nil)))
+         (cond ((null peek) (consume-a-url-token input))
+               ((find peek "\"'") (consume-a-function name input))
+               (t (consume-a-url-token input)))))
+      ((eql #\( next) (consume-a-function name input))
+      (t
+       (when next
+         (unread-char next input))
+       (make-ident-token :value name)))))
+
 ;;;; 4.3.5. Consume a string token
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-string-token
 
@@ -498,6 +519,25 @@
       (consume-a-numeric-token input)
       (make-delim-token :value (string character))))
 
+(defstruct (cdc-token (:include css-token)))
+
+(defun |--reader| (input character)
+  (cond ((start-a-number-p input) (- (consume-a-numeric-token input)))
+        ((let ((first (read-char input nil nil))
+               (second (read-char input nil nil)))
+           (if (and (char= #\- first) (char= #\> second))
+               (make-cdc-token)
+               (progn
+                (unread-char second input)
+                (unread-char first input)
+                nil))))
+        ((start-an-identifier-p input)
+         (let ((token (consume-an-ident-like-token input)))
+           (setf (string-token-value token)
+                   (uiop:strcat character (string-token-value token)))
+           token))
+        (t (make-delim-token :value (string character)))))
+
 ;;;; CSS-READTABLE
 
 (named-readtables:defreadtable css-readtable
@@ -506,7 +546,8 @@
   (:macro-char #\" '|"-reader|)
   (:macro-char #\' '|"-reader|)
   (:macro-char #\# '|#-reader|)
-  (:macro-char #\+ '|+-reader| t))
+  (:macro-char #\+ '|+-reader| t)
+  (:macro-char #\- '|--reader| t))
 
 ;;;; READ-CSS
 
