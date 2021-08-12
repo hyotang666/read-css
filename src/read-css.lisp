@@ -433,6 +433,8 @@
         (make-string-token :value contents))))
 
 ;;;; READERS
+;;;; 4.3.1. Consume a token
+;;; https://www.w3.org/TR/css-syntax-3/#consume-token
 
 (defun |/*-reader| (stream character number)
   (declare (ignore character number))
@@ -440,13 +442,38 @@
 
 (defun |"-reader| (stream character) (consume-a-string-token character stream))
 
+(defstruct (delim-token (:include string-token)))
+
+(defstruct (hash-token (:include string-token)
+                       (:constructor make-hash-token
+                        (&key value type &aux
+                         (type
+                          (if type
+                              :id
+                              :unrestricted)))))
+  (type :unrestricted :type (member :unrestricted :id)))
+
+(defun |#-reader| (input character)
+  (let ((next (read-char input nil nil)))
+    (cond ((null next) (make-delim-token :value (string character)))
+          ((or (name-code-point-p next)
+               (and (char= #\\ next) (valid-escape-p input)))
+           (unread-char next)
+           (make-hash-token :type (start-an-identifier-p input)
+                            :value (consume-a-name input)))
+          (t
+           (unread-char next input)
+           (make-delim-token :value (string character))))))
+
+
 ;;;; CSS-READTABLE
 
 (named-readtables:defreadtable css-readtable
   (:macro-char #\/ :dispatch)
   (:dispatch-macro-char #\/ #\* '|/*-reader|)
   (:macro-char #\" '|"-reader|)
-  (:macro-char #\' '|"-reader|))
+  (:macro-char #\' '|"-reader|)
+  (:macro-char #\# '|#-reader|))
 
 ;;;; READ-CSS
 
