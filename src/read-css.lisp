@@ -141,7 +141,7 @@
  | [*] 4.3.7  Consume an escaped code point
  | [*] 4.3.8  Check if two code points are a valid escape
  | [*] 4.3.9  Check if three code points would start an identifier
- | [ ] 4.3.10 Check if three code points would start a number
+ | [*] 4.3.10 Check if three code points would start a number
  | [*] 4.3.11 Consume a name
  | [*] 4.3.12 Consume a number
  | [ ] 4.3.13 Convert a string to a number
@@ -162,6 +162,34 @@
 (defun valid-escape-p (input)
   (let ((c (peek-char nil input nil nil)))
     (cond ((null c) nil) ((find c +newlines+) nil) (t t))))
+
+;;;; 4.3.10. Check if three code points would start a number
+;;; https://www.w3.org/TR/css-syntax-3/#starts-with-a-number
+
+(defun start-a-number-p (input)
+  (macrolet ((with-check ((var form) &body body)
+               `(let ((,var ,form))
+                  (unwind-protect (progn ,@body)
+                    (when ,var
+                      (unread-char ,var input))))))
+    (labels ((check-first ()
+               (with-check (first (read-char input nil nil))
+                           (cond ((null first) nil)
+                                 ((find first "+-") (check-second))
+                                 ((char= #\. first)
+                                  (let ((second (peek-char nil input nil nil)))
+                                    (and second (digit-char-p second 10))))
+                                 ((digit-char-p first 10))
+                                 (t nil))))
+             (check-second ()
+               (with-check (second (read-char input nil nil))
+                           (cond ((null second) nil)
+                                 ((digit-char-p second 10))
+                                 ((char= #\. second)
+                                  (let ((third (peek-char nil input nil nil)))
+                                    (and third (digit-char-p third 10))))
+                                 (t nil)))))
+      (check-first))))
 
 ;;;; 4.3.7. Consume an escaped code point
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-an-escaped-code-point
@@ -465,6 +493,10 @@
            (unread-char next input)
            (make-delim-token :value (string character))))))
 
+(defun |+-reader| (input character)
+  (if (start-a-number-p input)
+      (consume-a-numeric-token input)
+      (make-delim-token :value (string character))))
 
 ;;;; CSS-READTABLE
 
@@ -473,7 +505,8 @@
   (:dispatch-macro-char #\/ #\* '|/*-reader|)
   (:macro-char #\" '|"-reader|)
   (:macro-char #\' '|"-reader|)
-  (:macro-char #\# '|#-reader|))
+  (:macro-char #\# '|#-reader|)
+  (:macro-char #\+ '|+-reader| t))
 
 ;;;; READ-CSS
 
