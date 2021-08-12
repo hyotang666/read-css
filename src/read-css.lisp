@@ -149,11 +149,15 @@
  | [ ] 5.4.8  Consume a function
  |#
 
+;;;; 4.3.8. Check if two code points are a valid escape
+;;; https://www.w3.org/TR/css-syntax-3/#starts-with-a-valid-escape
+
+(defun valid-escape-p (input)
+  (let ((c (peek-char nil input nil nil)))
+    (cond ((null c) nil) ((find c +newlines+) nil) (t t))))
+
 ;;;; 4.3.7. Consume an escaped code point
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-an-escaped-code-point
-;; Unlike specification, we does not check valid escape before due to
-;; difficulty of two or more UNREAD-CHAR.
-;; Instead of it, we signals INVALID-ESCAPE.
 
 (define-condition invalid-escape (css-parse-error)
   ((character :initarg :character :reader invalid-escape-character)))
@@ -271,15 +275,14 @@
                        :do (loop-finish)
                      :else :if (name-code-point-p c)
                        :do (write-char c)
-                     :else :if (char= #\\ c)
+                     :else :if (and (char= #\\ c) (valid-escape-p input))
                        :do (write-char (consume-an-escaped-code-point input))
                      :else
                        :do (unread-char c input)
                            (loop-finish)))
              (valid-escape? ()
-               (handler-case (consume-an-escaped-code-point input)
-                 (invalid-escape ())
-                 (:no-error (c)
+               (when (valid-escape-p input)
+                 (let ((c (consume-an-escaped-code-point input)))
                    (write-char c)
                    (setf idp t)
                    (rest-name)))))
@@ -340,9 +343,8 @@
   (loop :for c = (read-char input nil nil)
         :if (or (null c) (char= #\) c))
           :do (loop-finish)
-        :else :if (char= #\\ c)
-          :do (handler-case (consume-an-escaped-code-point input)
-                (css-parse-error ()))
+        :else :if (and (char= #\\ c) (valid-escape-p input))
+          :do (consume-an-escaped-code-point input)
               ;; Discar c
               )
   (values))
@@ -389,14 +391,13 @@
                         (setf bad-url-p t)
                         (loop-finish)
                   :else :if (char= #\\ c)
-                    :do (handler-case (consume-an-escaped-code-point input)
-                          (css-parse-error (c)
-                            (signal c)
-                            (consume-the-remnants-of-a-bad-url input)
-                            (setf bad-url-p t)
-                            (loop-finish))
-                          (:no-error (char)
-                            (write-char char)))
+                    :do (if (valid-escape-p input)
+                            (write-char (consume-an-escaped-code-point input))
+                            (progn
+                             (signal 'css-parse-error :stream input)
+                             (consume-the-remnants-of-a-bad-url input)
+                             (setf bad-url-p t)
+                             (loop-finish)))
                   :else
                     :do (write-char c)))))
     (if bad-url-p
@@ -428,11 +429,9 @@
                         (unread-char char input)
                         (setf bad-string-p t)
                         (loop-finish)
-                  :else :if (char= #\\ char)
-                    :do (handler-case (consume-an-escaped-code-point input)
-                          (css-parse-error ()) ; do-nothing.
-                          (:no-error (c)
-                            (write-char c)))
+                  :else :if (and (char= #\\ char)
+				 (valid-escape-p input))
+                    :do (write-char (consume-an-escaped-code-point input))
                   :else
                     :do (write-char char)))))
     (if bad-string-p
