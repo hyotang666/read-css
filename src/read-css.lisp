@@ -33,7 +33,18 @@
 
 ;;;; CONDITIONS
 
-(define-condition css-parse-error (end-of-file) ())
+(define-condition css-parse-error (parse-error) ())
+
+(define-condition end-of-css (end-of-file css-parse-error) ())
+
+(define-condition invalid-escape (css-parse-error)
+  ((char :initarg :character :reader invalid-char))
+  (:report
+   (lambda (this output)
+     (funcall (formatter "Escape immediately follows ~S is invalid.") output
+              (invalid-char this)))))
+
+(define-condition simple-parse-error (css-parse-error simple-condition) ())
 
 (define-condition internal-logical-error (simple-error) ())
 
@@ -358,7 +369,7 @@
   (macrolet ((! (form)
                `(handler-case ,form
                   (end-of-file ()
-                    (error 'css-parse-error :stream input))
+                    (error 'end-of-css :stream input))
                   (:no-error (char)
                     char))))
     (loop :for char = (! (read-char input))
@@ -403,7 +414,7 @@
           (with-output-to-string (*standard-output*)
             (loop :for c = (read-char input nil nil)
                   :if (null c)
-                    :do (signal 'css-parse-error :stream input)
+                    :do (signal 'end-of-css :stream input)
                         (loop-finish)
                   :else :if (char= #\) c)
                     :do (loop-finish)
@@ -411,7 +422,7 @@
                     :do (let ((next (peek-char t input nil nil)))
                           (cond
                             ((null next)
-                             (signal 'css-parse-error :stream input)
+                             (signal 'end-of-css :stream input)
                              (loop-finish))
                             ((char= #\) next) (loop-finish))
                             (t
@@ -419,7 +430,9 @@
                              (setf bad-url-p t)
                              (loop-finish))))
                   :else :if (or (find c "\"'(") (non-printable-code-point-p c))
-                    :do (signal 'css-parse-error :stream input)
+                    :do (signal 'simple-parse-error
+                                :format-control "url( immediately follows ~S is invalid."
+                                :format-arguments (list c))
                         (consume-the-remnants-of-a-bad-url input)
                         (setf bad-url-p t)
                         (loop-finish)
@@ -427,7 +440,9 @@
                     :do (if (valid-escape-p input)
                             (write-char (consume-an-escaped-code-point input))
                             (progn
-                             (signal 'css-parse-error :stream input)
+                             (signal 'invalid-escape
+                                     :character (peek-char nil input nil
+                                                           'end-of-file))
                              (consume-the-remnants-of-a-bad-url input)
                              (setf bad-url-p t)
                              (loop-finish)))
@@ -472,12 +487,14 @@
           (with-output-to-string (*standard-output*)
             (loop :for char = (read-char input nil nil)
                   :if (null char)
-                    :do (signal 'css-parse-error :stream input)
+                    :do (signal 'end-of-css :stream input)
                         (loop-finish)
                   :else :if (char= char character)
                     :do (loop-finish)
                   :else :if (find char +newlines+)
-                    :do (signal 'css-parse-error :stream input)
+                    :do (signal 'simple-parse-error
+                                :format-control "~S in the string is invalid."
+                                :format-arguments (list char))
                         (unread-char char input)
                         (setf bad-string-p t)
                         (loop-finish)
@@ -485,7 +502,7 @@
                     :do (let ((next (read-char input nil nil)))
                           (cond
                             ((null next) ; do nothing.
-                             (signal 'css-parse-error :stream input))
+                             (signal 'end-of-css :stream input))
                             ((find next +newlines+)) ; consume newline.
                             (t
                              (unread-char next input)
