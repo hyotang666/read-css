@@ -236,61 +236,53 @@
                   (when (characterp next)
                     (unread-char next input))))))))
 
-;;;; 4.3.11. Consume a name
-;;; https://www.w3.org/TR/css-syntax-3/#consume-name
 ;;;; 4.3.9. Check if three code points would start an identifier
 ;;; https://www.w3.org/TR/css-syntax-3/#would-start-an-identifier
-;; Unlike specification, we implement two functions as one due to
-;; hard to UNREAD-CHAR two or more times.
-;; Fortunately common lisp has multiple values.
+
+(declaim
+ (ftype (function (css-input-stream) (values boolean &optional))
+        start-an-identifier-p))
+
+(defun start-an-identifier-p (input)
+  (macrolet ((with-cleanup ((var form) &body body)
+               `(let ((,var ,form))
+                  (unwind-protect (progn ,@body)
+                    (when ,var
+                      (unread-char ,var input))))))
+    (labels ((check-first ()
+               (with-cleanup (first (read-char input nil nil))
+                             (cond ((null first) nil)
+                                   ((char= #\- first) (check-second))
+                                   ((name-start-code-point-p first) t)
+                                   ((char= #\\ first) (valid-escape-p input))
+                                   (t nil))))
+             (check-second ()
+               (with-cleanup (second (read-char input nil nil))
+                             (cond ((null second) nil)
+                                   ((or (name-start-code-point-p second)
+                                        (char= #\- second))
+                                    t)
+                                   ((char= #\\ second) (valid-escape-p input))
+                                   (t nil)))))
+      (check-first))))
+
+;;;; 4.3.11. Consume a name
+;;; https://www.w3.org/TR/css-syntax-3/#consume-name
 
 (defun consume-a-name
        (&optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
-  (let (idp)
-    (labels ((first-char (char)
-               (cond ((null char))
-                     ((char= #\- char)
-                      (write-char char)
-                      (second-char (read-char input nil nil)))
-                     ((name-start-code-point-p char)
-                      (write-char char)
-                      (setf idp t)
-                      (rest-name))
-                     ((char= #\\ char) (valid-escape?))
-                     (t
-                      (write-char char)
-                      (rest-name))))
-             (second-char (char)
-               (cond ((null char))
-                     ((or (name-start-code-point-p char) (char= #\- char))
-                      (write-char char)
-                      (setf idp t)
-                      (rest-name))
-                     ((char= #\\ char) (valid-escape?))
-                     (t
-                      (write-char char)
-                      (rest-name))))
-             (rest-name ()
-               (loop :for c = (read-char input nil nil)
-                     :if (null c)
-                       :do (loop-finish)
-                     :else :if (name-code-point-p c)
-                       :do (write-char c)
-                     :else :if (and (char= #\\ c) (valid-escape-p input))
-                       :do (write-char (consume-an-escaped-code-point input))
-                     :else
-                       :do (unread-char c input)
-                           (loop-finish)))
-             (valid-escape? ()
-               (when (valid-escape-p input)
-                 (let ((c (consume-an-escaped-code-point input)))
-                   (write-char c)
-                   (setf idp t)
-                   (rest-name)))))
-      (values (with-output-to-string (*standard-output*)
-                (first-char (read-char input nil nil)))
-              idp))))
+       (with-output-to-string (*standard-output*)
+  (loop :for c = (read-char input nil nil)
+        :if (null c)
+          :do (loop-finish)
+        :else :if (name-code-point-p c)
+          :do (write-char c)
+        :else :if (and (char= #\\ c) (valid-escape-p input))
+          :do (write-char (consume-an-escaped-code-point input))
+        :else
+          :do (unread-char c input)
+              (loop-finish))))
 
 ;;;; 4.3.3. Consume a numeric token
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-numeric-token
@@ -307,16 +299,13 @@
         &aux (input (ensure-input-stream input)))
   (let ((number (consume-a-number input)) (next (peek-char nil input nil nil)))
     (cond ((null next) number)
-          ((or (char= #\- next)
-               (name-start-code-point-p next)
-               (char= #\\ next))
-           (make-dimension-token :type :number
-                                 :value number
-                                 :unit (consume-a-name input)))
-          ((char= #\% next)
-           (read-char input) ; discard %
-           (make-percentage-token :value number))
-          (t number))))
+	  ((start-an-identifier-p input)
+	   (make-dimension-token :value number
+				 :unit (consume-a-name input)))
+	  ((char= #\% next)
+	   (read-char input) ; discard %.
+	   (make-percentage-token :value number))
+	  (t number))))
 
 ;;;; 4.3.2. Consume comments
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-comment

@@ -3,7 +3,7 @@
   (:import-from :read-css #:read-css #:consume-a-number #:consume-a-numeric-token
 		#:consume-a-name #:consume-a-url-token
 		#:consume-an-escaped-code-point #:consume-a-string-token
-		))
+		#:consume-a-function #:start-an-identifier-p))
 (in-package :read-css.spec)
 (setup :read-css)
 
@@ -65,6 +65,45 @@
 					      (read-char in nil nil)))
 :values (#\& #\a)
 
+(requirements-about START-AN-IDENTIFIER-P :doc-type function)
+
+;;;; Description:
+
+#+syntax (START-AN-IDENTIFIER-P input) ; => result
+
+;;;; Arguments and Values:
+
+; input := css-input-stream
+
+; result := boolean
+
+;;;; Affected By:
+
+;;;; Side-Effects:
+
+;;;; Notes:
+
+;;;; Exceptional-Situations:
+
+;;;; Tests:
+#?(with-input-from-string (in "--hoge")
+    (let ((in (read-css::ensure-input-stream in)))
+      (values (start-an-identifier-p in)
+	      (read-char in))))
+:values (t #\-)
+
+#?(with-input-from-string (in "-\\hoge")
+    (let ((in (read-css::ensure-input-stream in)))
+      (values (start-an-identifier-p in)
+	      (read-char in))))
+:values (t #\-)
+
+#?(with-input-from-string (in "\\hoge")
+    (let ((in (read-css::ensure-input-stream in)))
+      (values (start-an-identifier-p in)
+	      (read-char in))))
+:values (t #\\)
+
 (requirements-about CONSUME-A-NAME :doc-type function :test equal)
 
 ;;;; Description:
@@ -88,28 +127,34 @@
 ;;;; Tests:
 #?(with-input-from-string (in "name")
     (consume-a-name in))
-:values ("name" t)
+=> "name"
+,:test equal
 
 ; With escape.
 #?(with-input-from-string (in "foo\\26 bar")
     (consume-a-name in))
-:values ("foo&bar" t)
+=> "foo&bar"
+,:test equal
 #?(with-input-from-string (in "foo\\000026bar")
     (consume-a-name in))
-:values ("foo&bar" t)
+=> "foo&bar"
+,:test equal
 #?(with-input-from-string (in "foo\\0000267bar")
     (consume-a-name in))
-:values ("foo&7bar" t)
+=> "foo&7bar"
+,:test equal
 
-; Case false second value.
 #?(with-input-from-string (in "-+foo") (consume-a-name in))
-:values ("-+foo" nil)
+=> "-"
+,:test equal
 
 #?(with-input-from-string (in (format nil "-\\~%foo")) (consume-a-name in))
-:values ("-" nil)
+=> "-"
+,:test equal
 
 #?(with-input-from-string (in (format nil "1234")) (consume-a-name in))
-:values ("1234" nil)
+=> "1234"
+,:test equal
 
 (requirements-about CONSUME-A-NUMBER :doc-type function)
 
