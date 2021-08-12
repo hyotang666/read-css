@@ -538,6 +538,13 @@
            token))
         (t (make-delim-token :value (string character)))))
 
+(defun |.-reader| (input character)
+  (let ((next (peek-char nil input nil nil)))
+    (cond ((null next) (make-delim-token :value (string character)))
+          ((digit-char-p next 10)
+           (float (/ (consume-a-numeric-token input) 10)))
+          (t (make-delim-token :value (string character))))))
+
 ;;;; CSS-READTABLE
 
 (named-readtables:defreadtable css-readtable
@@ -547,7 +554,8 @@
   (:macro-char #\' '|"-reader|)
   (:macro-char #\# '|#-reader|)
   (:macro-char #\+ '|+-reader| t)
-  (:macro-char #\- '|--reader| t))
+  (:macro-char #\- '|--reader| t)
+  (:macro-char #\. '|.-reader| t))
 
 ;;;; READ-CSS
 
