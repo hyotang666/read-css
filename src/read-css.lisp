@@ -420,8 +420,16 @@
                         (unread-char char input)
                         (setf bad-string-p t)
                         (loop-finish)
-                  :else :if (and (char= #\\ char) (valid-escape-p input))
-                    :do (write-char (consume-an-escaped-code-point input))
+                  :else :if (char= #\\ char)
+                    :do (let ((next (read-char input nil nil)))
+                          (cond
+                            ((null next) ; do nothing.
+                             (signal 'css-parse-error :stream input))
+                            ((find next +newlines+)) ; consume newline.
+                            (t
+                             (unread-char next input)
+                             (write-char
+                               (consume-an-escaped-code-point input)))))
                   :else
                     :do (write-char char)))))
     (if bad-string-p
