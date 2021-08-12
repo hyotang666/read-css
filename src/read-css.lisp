@@ -287,10 +287,9 @@
 ;;;; 4.3.3. Consume a numeric token
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-numeric-token
 
-(defstruct percentage-token (value (error "VALUE is required.") :type real))
+(defstruct (percentage-token (:include number-token)))
 
-(defstruct dimension-token
-  (value (error "VALUE is required.") :type real)
+(defstruct (dimension-token (:include number-token))
   (type nil :type (member nil :number))
   (unit (error "UNIT is required.") :type string))
 
@@ -342,9 +341,9 @@
 ;;;; 4.3.6. Consume a url token
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-url-token
 
-(defstruct url-token (value (error "VALUE is required.") :type string))
+(defstruct (url-token (:include string-token)))
 
-(defstruct bad-url-token (value (error "VALUE is required.") :type string))
+(defstruct (bad-url-token (:include string-token)))
 
 (defun consume-a-url-token
        (&optional (input *standard-input*)
@@ -397,9 +396,7 @@
 ;;;; 4.3.5. Consume a string token
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-string-token
 
-(defstruct string-token (value (error "VALUE is required.") :type string))
-
-(defstruct bad-string-token (value (error "VALUE is required.") :type string))
+(defstruct (bad-string-token (:include string-token)))
 
 (defun consume-a-string-token
        (character
