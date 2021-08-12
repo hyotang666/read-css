@@ -272,17 +272,17 @@
 (defun consume-a-name
        (&optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
-       (with-output-to-string (*standard-output*)
-  (loop :for c = (read-char input nil nil)
-        :if (null c)
-          :do (loop-finish)
-        :else :if (name-code-point-p c)
-          :do (write-char c)
-        :else :if (and (char= #\\ c) (valid-escape-p input))
-          :do (write-char (consume-an-escaped-code-point input))
-        :else
-          :do (unread-char c input)
-              (loop-finish))))
+  (with-output-to-string (*standard-output*)
+    (loop :for c = (read-char input nil nil)
+          :if (null c)
+            :do (loop-finish)
+          :else :if (name-code-point-p c)
+            :do (write-char c)
+          :else :if (and (char= #\\ c) (valid-escape-p input))
+            :do (write-char (consume-an-escaped-code-point input))
+          :else
+            :do (unread-char c input)
+                (loop-finish))))
 
 ;;;; 4.3.3. Consume a numeric token
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-numeric-token
@@ -299,13 +299,12 @@
         &aux (input (ensure-input-stream input)))
   (let ((number (consume-a-number input)) (next (peek-char nil input nil nil)))
     (cond ((null next) number)
-	  ((start-an-identifier-p input)
-	   (make-dimension-token :value number
-				 :unit (consume-a-name input)))
-	  ((char= #\% next)
-	   (read-char input) ; discard %.
-	   (make-percentage-token :value number))
-	  (t number))))
+          ((start-an-identifier-p input)
+           (make-dimension-token :value number :unit (consume-a-name input)))
+          ((char= #\% next)
+           (read-char input) ; discard %.
+           (make-percentage-token :value number))
+          (t number))))
 
 ;;;; 4.3.2. Consume comments
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-comment
