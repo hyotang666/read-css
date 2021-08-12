@@ -570,6 +570,14 @@
        (make-cdo-token))
       (make-delim-token :value (string character))))
 
+(defstruct (at-keyword-token (:include string-token)))
+
+(defun |@-reader| (input at-sign)
+  (cond
+    ((start-an-identifier-p input)
+     (make-at-keyword-token :value (consume-a-name input)))
+    (t (make-delim-token :value (string at-sign)))))
+
 ;;;; CSS-READTABLE
 
 (named-readtables:defreadtable css-readtable
@@ -581,7 +589,8 @@
   (:macro-char #\+ '|+-reader| t)
   (:macro-char #\- '|--reader| t)
   (:macro-char #\. '|.-reader| t)
-  (:macro-char #\< '|<-reader|))
+  (:macro-char #\< '|<-reader|)
+  (:macro-char #\@ '|@-reader|))
 
 ;;;; READ-CSS
 
