@@ -2,11 +2,12 @@
 (in-package :asdf)
 (defsystem "read-css"
   :version
-  "0.21.2"
+  "0.22.0"
   :depends-on
   (
    "named-readtables"   ; Readtable manager.
    "uiop"               ; Utilities.
+   "trivial-gray-streams" ; For two or more times UNREAD-CHAR.
    )
   :pathname
   "src/"

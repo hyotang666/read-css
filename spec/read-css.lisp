@@ -165,7 +165,9 @@
 ; Unlinke CL:READ, next char is remain.
 #?(with-input-from-string (in "1 2") (values (read in) (read-char in)))
 :values (1 #\2)
-#?(with-input-from-string (in "1 2") (values (consume-a-number in) (read-char in)))
+#?(with-input-from-string (in "1 2")
+    (let ((in (read-css::ensure-input-stream in)))
+      (values (consume-a-number in) (read-char in))))
 :values (1 #\space)
 
 (requirements-about CONSUME-A-URL-TOKEN :doc-type function)

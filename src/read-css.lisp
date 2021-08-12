@@ -6,6 +6,31 @@
 
 (in-package :read-css)
 
+;;;; CSS-INPUT-STREAM
+; To enable multitime UNREAD-CHAR.
+
+(defclass css-input-stream (trivial-gray-streams:fundamental-character-input-stream)
+  ((stream :initarg :stream :reader css-input-stream)
+   (kept :initform nil :accessor kept-chars)))
+
+(defmethod trivial-gray-streams:stream-read-char ((input css-input-stream))
+  (or (pop (kept-chars input)) (read-char (css-input-stream input) nil :eof)))
+
+(defmethod trivial-gray-streams:stream-unread-char
+           ((input css-input-stream) (c character))
+  (push c (kept-chars input))
+  nil)
+
+;;;; ABSTRUCT STRUCTURE
+
+(defstruct css-token)
+
+(defstruct (string-token (:include css-token))
+  (value (error "VALUE is required.") :type string))
+
+(defstruct (number-token (:include css-token))
+  (value (error "VALUE is required.") :type real))
+
 ;;;; CONDITIONS
 
 (define-condition css-parse-error (end-of-file) ())
@@ -14,15 +39,14 @@
 
 (defun ensure-input-stream (stream-designator)
   (etypecase stream-designator
-    (stream stream-designator)
-    ((eql t) *terminal-io*)
-    (null *standard-input*)))
+    (css-input-stream stream-designator)
+    (stream (make-instance 'css-input-stream :stream stream-designator))
+    ((eql t) (make-instance 'css-input-stream :stream *terminal-io*))
+    (null (make-instance 'css-input-stream :stream *standard-input*))))
 
 (defun non-ascii-code-point-p (char)
   ;; https://www.w3.org/TR/css-syntax-3/#non-ascii-code-point
   (<= #x80 (char-code char)))
-
-
 
 ;;;; CONSTANTS
 
