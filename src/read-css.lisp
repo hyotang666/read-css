@@ -497,6 +497,57 @@
         (make-bad-string-token :value contents)
         (make-string-token :value contents))))
 
+;;;; 5.4.7. Consume a simple block
+;;; https://www.w3.org/TR/css-syntax-3/#consume-a-simple-block
+
+(declaim
+ (ftype (function ((or null character) css-input-stream)
+         (values list &optional))
+        consume-a-simple-block))
+
+(defun consume-a-simple-block (end-char input)
+  ;; Note: This algorithm assumes that the current input token has
+  ;; already been read open token e.g. #\( #\[ #\{.
+  ;; If end-char is `NIL`, do implicit list behavior.
+  (loop :for c = (read-char input nil nil)
+        ;; EOF check.
+        :if (null c)
+          :do (signal 'end-of-css :stream input)
+              (loop-finish)
+        ;; Collect components.
+        :else :if (char= #\, c)
+          :collect nil ; as null component.
+        :else :if (eql end-char c)
+          :do (loop-finish)
+        :else :if (char= #\{ c)
+          :collect (consume-a-simple-block #\} input)
+        :else :if (char= #\( c)
+          :collect (consume-a-simple-block #\) input)
+        :else :if (char= #\[ c)
+          :collect (consume-a-simple-block #\] input)
+        :else
+          :collect (progn
+                    (unread-char c input)
+                    (consume-an-ident-like-token input))
+        ;; Loop end check.
+        :if (eql #\, (peek-char t input nil nil))
+          :do (read-char input)
+        :else
+          :do (loop-finish)))
+
+;;;; 5.4.8. Consume a function
+;;; https://www.w3.org/TR/css-syntax-3/#ref-for-typedef-function-token%E2%91%A8
+
+(defstruct (function-token (:include css-token))
+  (name (error "NAME is required.") :type string)
+  (args (error "VALUE is required.") :type list))
+
+(defun consume-a-function
+       (name
+        &optional (input *standard-input*)
+        &aux (input (ensure-input-stream input)))
+  (make-function-token :name name :args (consume-a-simple-block #\) input)))
+
 ;;;; READERS
 ;;;; 4.3.1. Consume a token
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-token
@@ -504,6 +555,18 @@
 (defun |/*-reader| (stream character number)
   (declare (ignore character number))
   (consume-comments stream))
+
+(defun |(-reader| (stream character)
+  (declare (ignore character))
+  (consume-a-simple-block #\) stream))
+
+(defun |[-reader| (stream character)
+  (declare (ignore character))
+  (consume-a-simple-block #\] stream))
+
+(defun |{-reader| (stream character)
+  (declare (ignore character))
+  (consume-a-simple-block #\} stream))
 
 (defun |"-reader| (stream character) (consume-a-string-token character stream))
 
@@ -577,41 +640,18 @@
 
 (defstruct (at-keyword-token (:include string-token)))
 
-(defun read-delimited-component-value (end-char input)
-  (loop :for c = (read-char input nil nil)
-        :if (null c)
-          :do (signal 'end-of-css :stream input)
-              (loop-finish)
-        :else :if (char= #\, c)
-          :collect nil
-        :else :if (char= end-char c)
-          :do (loop-finish)
-        :if (eql #\, (peek-char t input nil nil))
-          :do (read-char input)))
-
 (defun |@-reader| (input at-sign)
   (cond
     ((start-an-identifier-p input)
      (make-at-rule :name (consume-a-name input)
-                   :components (loop :for c = (read-char input nil nil)
-                                     :if (null c)
-                                       :do (signal 'end-of-css :stream input)
-                                           (loop-finish)
-                                     :else :if (char= #\, c)
-                                       :collect nil
-                                     :else
-                                       :collect (progn
-                                                 (unread-char c input)
-                                                 (read-style input))
-                                     :if (eql #\, (peek-char t input nil nil))
-                                       :do (read-char input))
+                   :components (consume-a-simple-block nil input)
                    :block (let ((block? (read-char input nil nil)))
                             (cond
                               ((null block?)
                                (signal 'end-of-css :stream input))
                               ((char= #\; block?) nil)
                               ((char= #\{ block?)
-                               (read-delimited-component-value #\} input))
+                               (consume-a-simple-block #\} input))
                               (t
                                (unread-char block? input)
                                (signal 'simple-parse-error
@@ -621,6 +661,15 @@
      (make-at-keyword-token :value (string at-sign)))))
 
 ;;;; CSS-READTABLE
+#| https://www.w3.org/TR/css-syntax-3/#parser-diagrams
+ |
+ | Stylesheet := [ <whitespace-token> | <CDC-token> | <CDO-token> | Qualified-rule | At-rule ]
+ | Qualified rule := [ Component-value {} block ]
+ | At-rule := [ <at-keyword-token> Component-value [ {}-block | ; ] ]
+ |
+ | Component value ;= [ Preserved-token | {}-block | ()-block | []-block | Function-block ]
+ |
+ |#
 
 (named-readtables:defreadtable css-readtable
   (:macro-char #\/ :dispatch)
@@ -632,7 +681,13 @@
   (:macro-char #\- '|--reader| t)
   (:macro-char #\. '|.-reader| t)
   (:macro-char #\< '|<-reader|)
-  (:macro-char #\@ '|@-reader|))
+  (:macro-char #\@ '|@-reader|)
+  (:macro-char #\( '|(-reader|)
+  (:macro-char #\) (get-macro-character #\)))
+  (:macro-char #\[ '|[-reader|)
+  (:macro-char #\] (get-macro-character #\)))
+  (:macro-char #\{ '|{-reader|)
+  (:macro-char #\} (get-macro-character #\))))
 
 ;;;; READ-CSS
 
