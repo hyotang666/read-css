@@ -1,7 +1,7 @@
 (defpackage :read-css.spec
   (:use :cl :jingoh :read-css)
   (:import-from :read-css #:read-css #:consume-a-number #:consume-a-numeric-token
-		#:consume-a-name #:consume-a-url-token
+		#:consume-a-name #:consume-an-ident-like-token #:consume-a-url-token
 		#:consume-an-escaped-code-point #:consume-a-string-token
 		#:consume-a-function #:start-an-identifier-p))
 (in-package :read-css.spec)
@@ -409,6 +409,94 @@
 	     (& (typep result 'read-css::bad-string-token)
 		(equal "foo" (read-css::bad-string-token-value result))))
 ,:ignore-signals nil
+
+(requirements-about CONSUME-AN-IDENT-LIKE-TOKEN :doc-type function)
+
+;;;; Description:
+
+#+syntax (CONSUME-AN-IDENT-LIKE-TOKEN &optional (input *standard-input*))
+; => result
+
+;;;; Arguments and Values:
+
+; input := 
+
+; result := 
+
+;;;; Affected By:
+
+;;;; Side-Effects:
+
+;;;; Notes:
+
+;;;; Exceptional-Situations:
+
+;;;; Tests:
+; Token.
+#?(with-input-from-string (in "token") (consume-an-ident-like-token in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::ident-token)
+		(equal "token" (read-css::ident-token-value result))))
+
+; Function.
+#?(with-input-from-string (in "function()") (consume-an-ident-like-token in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::function-token)
+		(equal "function" (read-css::function-token-name result))
+		(equal () (read-css::function-token-args result))))
+
+; Url
+#?(with-input-from-string (in "url(https://example.com/images/myImg.jpg)")
+    (consume-an-ident-like-token in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::url-token)
+		(equal "https://example.com/images/myImg.jpg"
+		       (read-css::url-token-value result))))
+
+#?(with-input-from-string (in "url(#IDofSVGPath)")
+    (consume-an-ident-like-token in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::url-token)
+		(equal "#IDofSVGPath"
+		       (read-css::url-token-value result))))
+
+(requirements-about CONSUME-A-FUNCTION :doc-type function)
+
+;;;; Description:
+
+#+syntax (CONSUME-A-FUNCTION name &optional (input *standard-input*))
+; => result
+
+;;;; Arguments and Values:
+
+; name := 
+
+; input := 
+
+; result := 
+
+;;;; Affected By:
+
+;;;; Side-Effects:
+
+;;;; Notes:
+
+;;;; Exceptional-Situations:
+
+;;;; Tests:
+; Null args.
+#?(with-input-from-string (in ")") (consume-a-function "fun-name" in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::function-token)
+		(equal "fun-name" (read-css::function-token-name result))
+		(null (read-css::function-token-args result))))
+
+; Some args
+#?(with-input-from-string (in "a,b)") (consume-a-function "fun-name" in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::function-token)
+		(equal "fun-name" (read-css::function-token-name result))
+		(equal '("a" "b") (read-css::function-token-args result))))
 
 (requirements-about READ-CSS :doc-type function)
 
