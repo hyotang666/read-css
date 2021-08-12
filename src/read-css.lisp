@@ -570,13 +570,55 @@
        (make-cdo-token))
       (make-delim-token :value (string character))))
 
+(defstruct at-rule
+  (name (error "NAME is required.") :type string)
+  (components nil :type list)
+  (block nil :type list))
+
 (defstruct (at-keyword-token (:include string-token)))
+
+(defun read-delimited-component-value (end-char input)
+  (loop :for c = (read-char input nil nil)
+        :if (null c)
+          :do (signal 'end-of-css :stream input)
+              (loop-finish)
+        :else :if (char= #\, c)
+          :collect nil
+        :else :if (char= end-char c)
+          :do (loop-finish)
+        :if (eql #\, (peek-char t input nil nil))
+          :do (read-char input)))
 
 (defun |@-reader| (input at-sign)
   (cond
     ((start-an-identifier-p input)
-     (make-at-keyword-token :value (consume-a-name input)))
-    (t (make-delim-token :value (string at-sign)))))
+     (make-at-rule :name (consume-a-name input)
+                   :components (loop :for c = (read-char input nil nil)
+                                     :if (null c)
+                                       :do (signal 'end-of-css :stream input)
+                                           (loop-finish)
+                                     :else :if (char= #\, c)
+                                       :collect nil
+                                     :else
+                                       :collect (progn
+                                                 (unread-char c input)
+                                                 (read-style input))
+                                     :if (eql #\, (peek-char t input nil nil))
+                                       :do (read-char input))
+                   :block (let ((block? (read-char input nil nil)))
+                            (cond
+                              ((null block?)
+                               (signal 'end-of-css :stream input))
+                              ((char= #\; block?) nil)
+                              ((char= #\{ block?)
+                               (read-delimited-component-value #\} input))
+                              (t
+                               (unread-char block? input)
+                               (signal 'simple-parse-error
+                                       :format-control "Missing block."))))))
+    (t
+     (signal 'simple-parse-error :format-control "Missing at keyword name.")
+     (make-at-keyword-token :value (string at-sign)))))
 
 ;;;; CSS-READTABLE
 
