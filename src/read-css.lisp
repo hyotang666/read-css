@@ -55,6 +55,22 @@
   ;; https://www.w3.org/TR/css-syntax-3/#non-ascii-code-point
   (<= #x80 (char-code char)))
 
+(declaim
+ (ftype (function (string css-input-stream) (values boolean &optional))
+        stream-start-with))
+
+(defun stream-start-with (string input)
+  (labels ((rec (index)
+             (if (array-in-bounds-p string index)
+                 (let ((char (read-char input nil nil)))
+                   (unwind-protect
+                       (if (eql char (aref string index))
+                           (rec (1+ index))
+                           nil)
+                     (when char
+                       (unread-char char input)))))))
+    (rec 0)))
+
 ;;;; CONSTANTS
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -545,6 +561,15 @@
            (float (/ (consume-a-numeric-token input) 10)))
           (t (make-delim-token :value (string character))))))
 
+(defstruct (cdo-token (:include css-token)))
+
+(defun |<-reader| (input character)
+  (if (stream-start-with "!--" input)
+      (progn
+       (dotimes (x 3) (read-char input)) ; discard !--.
+       (make-cdo-token))
+      (make-delim-token :value (string character))))
+
 ;;;; CSS-READTABLE
 
 (named-readtables:defreadtable css-readtable
@@ -555,7 +580,8 @@
   (:macro-char #\# '|#-reader|)
   (:macro-char #\+ '|+-reader| t)
   (:macro-char #\- '|--reader| t)
-  (:macro-char #\. '|.-reader| t))
+  (:macro-char #\. '|.-reader| t)
+  (:macro-char #\< '|<-reader|))
 
 ;;;; READ-CSS
 
