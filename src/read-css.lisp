@@ -140,8 +140,8 @@
  | [*] 4.3.6  Consume a url token
  | [*] 4.3.7  Consume an escaped code point
  | [*] 4.3.8  Check if two code points are a valid escape
- | [ ] 4.3.9  Check if three code points would start an identifier
- | [!] 4.3.10 Check if three code points would start a number
+ | [*] 4.3.9  Check if three code points would start an identifier
+ | [ ] 4.3.10 Check if three code points would start a number
  | [*] 4.3.11 Consume a name
  | [*] 4.3.12 Consume a number
  | [ ] 4.3.13 Convert a string to a number
