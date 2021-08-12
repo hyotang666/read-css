@@ -35,6 +35,13 @@
 
 (define-condition css-parse-error (end-of-file) ())
 
+(define-condition internal-logical-error (simple-error) ())
+
+(defun internal-logical-error (format-control &rest format-args)
+  (error 'internal-logical-error
+         :format-control format-control
+         :format-arguments format-args))
+
 ;;;; Utilities
 
 (defun ensure-input-stream (stream-designator)
@@ -132,7 +139,7 @@
  | [*] 4.3.5  Consume a string token
  | [*] 4.3.6  Consume a url token
  | [*] 4.3.7  Consume an escaped code point
- | [!] 4.3.8  Check if two code points are a valid escape
+ | [*] 4.3.8  Check if two code points are a valid escape
  | [ ] 4.3.9  Check if three code points would start an identifier
  | [!] 4.3.10 Check if three code points would start a number
  | [*] 4.3.11 Consume a name
@@ -159,9 +166,6 @@
 ;;;; 4.3.7. Consume an escaped code point
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-an-escaped-code-point
 
-(define-condition invalid-escape (css-parse-error)
-  ((character :initarg :character :reader invalid-escape-character)))
-
 (defconstant +maximum-allowed-code-point+ #x10FFFF)
 
 (defun surrogatep (code)
@@ -173,35 +177,33 @@
         &aux (input (ensure-input-stream input)))
   ;; NOTE: escape char is already read.
   (let ((c (read-char input nil nil)))
-    (cond
-      ((null c)
-       (signal 'css-parse-error :stream input)
-       #.(code-char #xFFFD))
-      ((digit-char-p c 16)
-       (let ((code
-              (let ((*read-base* 16))
-                (read-from-string
-                  (with-output-to-string (*standard-output*)
-                    (write-char c)
-                    (loop :repeat 5
-                          :for c = (read-char input nil nil)
-                          :if (null c)
-                            :do (loop-finish)
-                          :else :if (digit-char-p c 16)
-                            :do (write-char c)
-                          :else :if (char= #\Space c)
-                            :do (loop-finish)
-                          :else
-                            :do (unread-char c input)
-                                (loop-finish)))))))
-         (cond
-           ((or (< +maximum-allowed-code-point+ code)
-                (= 0 code)
-                (surrogatep code))
-            #.(code-char #xFFFD))
-           (t (code-char code)))))
-      ((find c +newlines+) (error 'invalid-escape :stream input :character c))
-      (t c))))
+    (cond ((null c) (internal-logical-error "Must not comes here. ~S" input))
+          ((digit-char-p c 16)
+           (let ((code
+                  (let ((*read-base* 16))
+                    (read-from-string
+                      (with-output-to-string (*standard-output*)
+                        (write-char c)
+                        (loop :repeat 5
+                              :for c = (read-char input nil nil)
+                              :if (null c)
+                                :do (loop-finish)
+                              :else :if (digit-char-p c 16)
+                                :do (write-char c)
+                              :else :if (char= #\Space c)
+                                :do (loop-finish)
+                              :else
+                                :do (unread-char c input)
+                                    (loop-finish)))))))
+             (cond
+               ((or (< +maximum-allowed-code-point+ code)
+                    (= 0 code)
+                    (surrogatep code))
+                #.(code-char #xFFFD))
+               (t (code-char code)))))
+          ((find c +newlines+)
+           (internal-logical-error "Must not comes here. ~S" input))
+          (t c))))
 
 ;;;; 4.3.12. Consume a number
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-a-number

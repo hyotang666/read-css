@@ -25,6 +25,7 @@
 ;;;; Side-Effects:
 
 ;;;; Notes:
+; Must check VALID-ESCAPE-P before call this.
 
 ;;;; Exceptional-Situations:
 
@@ -39,13 +40,13 @@
 #?(with-input-from-string (in "g") (consume-an-escaped-code-point in))
 => #\g
 
-; Case end-of-file.
+; Case end-of-file without before checking.
 #?(with-input-from-string (in "") (consume-an-escaped-code-point in))
-:signals end-of-file
+:signals read-css::internal-logical-error
 
-; Case newlines.
+; Case newlines without before cheking.
 #?(with-input-from-string (in (string #\newline)) (consume-an-escaped-code-point in))
-:signals read-css::invalid-escape
+:signals read-css::internal-logical-error
 
 ; Case #\nul
 #?(with-input-from-string (in "0") (consume-an-escaped-code-point in))
