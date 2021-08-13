@@ -156,6 +156,12 @@
 => "1234"
 ,:test equal
 
+#?(with-input-from-string (in "foo:bar")
+    (let ((in (read-css::ensure-input-stream in)))
+      (values (consume-a-name in)
+	      (read-char in))))
+:values ("foo" #\:)
+
 (requirements-about CONSUME-A-NUMBER :doc-type function)
 
 ;;;; Description:
