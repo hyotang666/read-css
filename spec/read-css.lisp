@@ -540,7 +540,7 @@
 ; (Unfortunately) nested comment is disabled.
 #?(with-input-from-string (in "/* nested /* comment */ is disabled */")
     (read-css in))
-:signals end-of-file
+:signals read-css::css-parse-error
 
 ;;; Numbers
 ; Integer

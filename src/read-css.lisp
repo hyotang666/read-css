@@ -480,7 +480,11 @@
       ((eql #\( next) (consume-a-function name input))
       (t
        (when next
-         (unread-char next input))
+         (unread-char next input)
+         (when (equal "" name)
+           (error 'simple-parse-error
+                  :format-control "Could not parse ident like token. ~S"
+                  :format-arguments (list next))))
        (make-ident-token :value name)))))
 
 ;;;; 4.3.5. Consume a string token
