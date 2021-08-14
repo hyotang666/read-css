@@ -335,6 +335,13 @@
 		(eql 10 (read-css::dimension-token-value result))
 		(equal "px" (read-css::dimension-token-unit result))))
 
+; em
+#?(with-input-from-string (in "1.5em") (consume-a-numeric-token in))
+:satisfies (lambda (result)
+	     (& (equalp result (read-css::make-dimension-token
+				 :value 1.5
+				 :unit "em"))))
+
 (requirements-about CONSUME-A-STRING-TOKEN :doc-type function)
 
 ;;;; Description:

@@ -277,28 +277,53 @@
         &aux (input (ensure-input-stream input)))
   (values (read-from-string
             (with-output-to-string (*standard-output*)
-              (labels ((next? (string char)
-                         (if (find char string)
-                             (progn (write-char char) (read-char input))
-                             char))
-                       (consume-digits (char)
-                         (if (and char (digit-char-p char 10))
-                             (progn
-                              (write-char char)
-                              (consume-digits (read-char input nil nil)))
-                             char)))
-                (let ((next
-                       (consume-digits
-                         (next? "+-"
-                                (next? "eE"
-                                       (consume-digits
-                                         (next? "."
-                                                (consume-digits
-                                                  (next? "+-"
-                                                         (read-char
-                                                           input))))))))))
-                  (when (characterp next)
-                    (unread-char next input))))))))
+              (labels ((sign? ()
+                         (let ((sign? (read-char input nil nil)))
+                           (cond ((null sign?))
+                                 ((find sign? "+-")
+                                  (write-char sign?)
+                                  (digits))
+                                 (t
+                                  (unread-char sign? input)
+                                  (digits)))))
+                       (digits ()
+                         (loop :for c = (read-char input nil nil)
+                               :if (null c)
+                                 :do (loop-finish)
+                               :else :if (digit-char-p c 10)
+                                 :do (write-char c)
+                               :else
+                                 :do (unread-char c input)
+                                     (loop-finish)))
+                       (dot? ()
+                         (let ((dot? (read-char input nil nil)))
+                           (cond ((null dot?))
+                                 ((char= #\. dot?)
+                                  (write-char dot?)
+                                  (digits)
+                                  (exponent?)
+                                  (sign?))
+                                 (t
+                                  (unread-char dot? input)
+                                  (exponent?)
+                                  (sign?)))))
+                       (exponent? ()
+                         (let ((exponent? (read-char input nil nil)))
+                           (cond ((null exponent?))
+                                 ((find exponent? "eE")
+                                  (let ((next (read-char input nil nil)))
+                                    (cond ((null next))
+                                          ((or (find next "+-")
+                                               (digit-char-p next 10))
+                                           (unread-char next input)
+                                           (write-char exponent?)
+                                           (sign?))
+                                          (t
+                                           (unread-char next input)
+                                           (unread-char exponent? input)))))
+                                 (t (unread-char exponent? input))))))
+                (sign?)
+                (dot?))))))
 
 ;;;; 4.3.9. Check if three code points would start an identifier
 ;;; https://www.w3.org/TR/css-syntax-3/#would-start-an-identifier
