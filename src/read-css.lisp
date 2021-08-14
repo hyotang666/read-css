@@ -595,9 +595,44 @@
   (declare (ignore character))
   (consume-a-simple-block #\] stream))
 
-(defun |{-reader| (stream character)
-  (declare (ignore character))
-  (consume-a-simple-block #\} stream))
+(defun |{-reader| (input open-paren)
+  (declare (ignore open-paren))
+  (loop :for c = (peek-char t input nil nil)
+        :if (null c)
+          :do (signal 'end-of-css :stream input)
+              (loop-finish)
+        :else :if (char= #\} c)
+          :do (read-char input) ; discard close-paren
+              (loop-finish)
+        :else
+          :collect (consume-a-name input)
+          :and :do (let ((colon? (peek-char t input nil nil)))
+                     (cond
+                       ((null colon?)
+                        (signal 'end-of-css :stream input)
+                        (loop-finish))
+                       ((char= #\: colon?) (read-char input)) ; successfully
+                                                              ; consume.
+                       (t
+                        (error 'simple-parse-error
+                               :format-control "~S is invalid after property key."
+                               :format-arguments (list colon?)))))
+          :and :collect (read-style input)
+          :and :do (let ((semi-colon? (peek-char t input nil nil)))
+                     (cond
+                       ((null semi-colon?)
+                        (signal 'end-of-css :stream input)
+                        (loop-finish))
+                       ((char= #\; semi-colon?) (read-char input)) ; successfully
+                                                                   ; consume.
+                       ((char= #\} semi-colon?)
+                        (signal 'simple-parse-error
+                                :format-control "Missing semi-collon in the declaration.")
+                        (loop-finish))
+                       (t
+                        (error 'simple-parse-error
+                               :format-control "~S is invalid after property value."
+                               :format-arguments (list semi-colon?)))))))
 
 (defun |"-reader| (stream character) (consume-a-string-token character stream))
 

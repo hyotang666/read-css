@@ -3,7 +3,8 @@
   (:import-from :read-css #:read-css #:consume-a-number #:consume-a-numeric-token
 		#:consume-a-name #:consume-an-ident-like-token #:consume-a-url-token
 		#:consume-an-escaped-code-point #:consume-a-string-token
-		#:consume-a-function #:start-an-identifier-p #:consume-a-simple-block))
+		#:consume-a-function #:start-an-identifier-p #:consume-a-simple-block
+		#:|{-reader|))
 (in-package :read-css.spec)
 (setup :read-css)
 
@@ -588,6 +589,37 @@
 	     fun-token)
      (eql #\a char)))
 
+(requirements-about |{-reader| :doc-type function)
+
+;;;; Description:
+
+#+syntax (|{-reader| input open-paren) ; => result
+
+;;;; Arguments and Values:
+
+; input := 
+
+; open-paren := 
+
+; result := 
+
+;;;; Affected By:
+
+;;;; Side-Effects:
+
+;;;; Notes:
+
+;;;; Exceptional-Situations:
+#?(with-input-from-string (in "padding-top:6px;}a")
+    (let ((in (read-css::ensure-input-stream in)))
+      (values (|{-reader| in #\{)
+	      (read-char in))))
+:multiple-value-satisfies
+(lambda (list char)
+  (& (equalp (list "padding-top"
+		   (read-css::make-dimension-token :value 6 :type nil :unit "px"))
+	     list)
+     (eql char #\a)))
 
 (requirements-about READ-CSS :doc-type function)
 
