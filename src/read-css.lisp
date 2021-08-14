@@ -583,9 +583,15 @@
 ;;;; 4.3.1. Consume a token
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-token
 
-(defun |/*-reader| (stream character number)
-  (declare (ignore character number))
-  (consume-comments stream))
+(defstruct (delim-token (:include string-token)))
+
+(defun |/-reader| (input character)
+  (let ((next (read-char input nil nil)))
+    (cond ((null next) (make-delim-token :value (string character)))
+          ((char= #\* next) (consume-comments input))
+          (t
+           (unread-char next input)
+           (make-delim-token :value (string character))))))
 
 (defun |(-reader| (stream character)
   (declare (ignore character))
@@ -632,8 +638,6 @@
                                 :collect (read-style input))))
 
 (defun |"-reader| (stream character) (consume-a-string-token character stream))
-
-(defstruct (delim-token (:include string-token)))
 
 (defstruct (hash-token (:include string-token)
                        (:constructor make-hash-token
@@ -766,8 +770,7 @@
  |#
 
 (named-readtables:defreadtable css-readtable
-  (:macro-char #\/ :dispatch)
-  (:dispatch-macro-char #\/ #\* '|/*-reader|)
+  (:macro-char #\/ '|/-reader|)
   (:macro-char #\" '|"-reader|)
   (:macro-char #\' '|"-reader|)
   (:macro-char #\# '|#-reader|)
