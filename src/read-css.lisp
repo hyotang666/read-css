@@ -636,7 +636,7 @@
           :do (read-char input) ; discard close-paren
               (loop-finish)
         :else
-          :collect (consume-a-name input)
+          :collect (consume-a-name input) ; property key.
           :and :do (let ((colon? (peek-char t input nil nil)))
                      (cond
                        ((null colon?)
@@ -648,7 +648,8 @@
                         (error 'simple-parse-error
                                :format-control "~S is invalid after property key."
                                :format-arguments (list colon?)))))
-          :and :collect (loop :for c = (peek-char t input nil nil)
+          :and :collect (loop :for c = (peek-char t input nil nil) ; property
+                                                                   ; values.
                               :if (null c)
                                 :do (signal 'end-of-css :stream input)
                                     (loop-finish)
@@ -660,7 +661,35 @@
                                             :format-control "Missing semi-collon in the declaration.")
                                     (loop-finish)
                               :else
-                                :collect (read-style input))))
+                                :collect (let ((*readtable*
+                                                (named-readtables:copy-named-readtable
+                                                  'css-readtable)))
+                                           (set-macro-character #\#
+                                                                '|#rgb-reader|)
+                                           (read-style input)))))
+
+(defun |#rgb-reader| (input hash)
+  (declare (ignore hash))
+  (let ((hex
+         (loop :for c = (read-char input nil nil)
+               :repeat 6
+               :if (null c)
+                 :do (loop-finish)
+               :else :if (digit-char-p c 16)
+                 :collect :it
+               :else
+                 :do (unread-char c input)
+                     (loop-finish))))
+    (case (length hex)
+      (3
+       (apply #'cl-colors2:rgb
+              (mapcar
+                (lambda (x) (float (/ (dpb x (byte 4 0) (ash x 4)) #xFF)))
+                hex)))
+      (6
+       (apply #'cl-colors2:rgb
+              (loop :for (a b) :on hex :by #'cddr
+                    :collect (float (/ (dpb b (byte 4 0) (ash a 4)) #xFF))))))))
 
 (defun |"-reader| (stream character) (consume-a-string-token character stream))
 

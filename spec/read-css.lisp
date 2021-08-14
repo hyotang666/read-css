@@ -737,3 +737,21 @@
 				      (list (read-css::make-dimension-token :value 65 :type nil :unit "px"))
 				      "padding-top"
 				      (list (read-css::make-dimension-token :value 6 :type nil :unit "px"))))))))
+
+#?(with-input-from-string (in ".commentBox{ border: 1px solid #CCC; padding: 15px 153px;}")
+    (read-css in))
+:satisfies (lambda (result)
+	     (equalp result
+		     (list (read-css::make-qualified-rule
+			     :selectors '(".commentBox")
+			     :declarations
+			     (list "border"
+				   (list (read-css::make-dimension-token
+					   :value 1 :type nil :unit "px")
+					 (read-css::make-ident-token :value "solid")
+					 (cl-colors2:rgb 0.8 0.8 0.8))
+				   "padding"
+				   (list (read-css::make-dimension-token
+					   :value 15 :type nil :unit "px")
+					 (read-css::make-dimension-token
+					   :value 153 :type nil :unit "px")))))))
