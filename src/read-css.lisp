@@ -528,6 +528,14 @@
         (make-bad-string-token :value contents)
         (make-string-token :value contents))))
 
+;;;; 5.4.6. Consume a component value
+;;; https://www.w3.org/TR/css-syntax-3/#consume-component-value
+
+(defun consume-a-component-value
+       (&optional (input *standard-input*)
+        &aux (input (ensure-input-stream input)))
+  (read-style input nil 'end-of-file))
+
 ;;;; 5.4.7. Consume a simple block
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-a-simple-block
 
