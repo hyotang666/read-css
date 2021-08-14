@@ -137,8 +137,8 @@
        (uiop:list-to-hash-set (concatenate 'list +letters+ "_"))))
   (defun name-start-code-point-p (char)
     ;; https://www.w3.org/TR/css-syntax-3/#name-start-code-point
-    (or (non-ascii-code-point-p char)
-        (values (gethash char name-start-code-point)))))
+    (or (values (gethash char name-start-code-point))
+        (non-ascii-code-point-p char))))
 
 (let ((name-code-point
        (uiop:list-to-hash-set (concatenate 'list "-" +digits+))))
