@@ -647,17 +647,34 @@
                               :unrestricted)))))
   (type :unrestricted :type (member :unrestricted :id)))
 
+(defstruct qualified-rule
+  (selectors nil :type list)
+  (declarations nil :type list))
+
+(defun consume-selectors (input first-char)
+  (uiop:while-collecting (acc)
+    (acc
+     (uiop:strcat first-char
+                  (core-reader:read-string-till
+                    (lambda (c) (or (white-space-p c) (find c ",{"))) input)))
+    (loop (if (char= #\, (peek-char t input nil #\Nul))
+              (acc
+               (core-reader:read-string-till
+                 (lambda (c) (or (white-space-p c) (find c ",{"))) input))
+              (return)))))
+
 (defun |#-reader| (input character)
-  (let ((next (read-char input nil nil)))
-    (cond ((null next) (make-delim-token :value (string character)))
-          ((or (name-code-point-p next)
-               (and (char= #\\ next) (valid-escape-p input)))
-           (unread-char next)
-           (make-hash-token :type (start-an-identifier-p input)
-                            :value (consume-a-name input)))
-          (t
-           (unread-char next input)
-           (make-delim-token :value (string character))))))
+  (cond
+    ((start-an-identifier-p input)
+     (let ((selectors (consume-selectors input character)))
+       (if (char= #\{ (peek-char t input nil #\Nul))
+           (make-qualified-rule :selectors selectors
+                                :declarations (read-style input))
+           (error 'simple-parse-error
+                  :format-control "Unknown syntax: selectors follows ~S"
+                  :format-arguments (list
+                                      (peek-char t input nil 'end-of-file))))))
+    (t (make-delim-token :value (string character)))))
 
 (defun |+-reader| (input character)
   (if (start-a-number-p input)
@@ -683,35 +700,13 @@
            token))
         (t (make-delim-token :value (string character)))))
 
-(defstruct css-selector (name (error "NAME is required.") :type string))
-
-(defstruct (class-selector (:include css-selector)))
-
-(defstruct qualified-rule
-  (selectors nil :type list)
-  (declarations nil :type list))
-
 (defun |.-reader| (input character)
   (let ((next (peek-char nil input nil nil)))
     (cond ((null next) (make-delim-token :value (string character)))
           ((digit-char-p next 10)
            (float (/ (consume-a-numeric-token input) 10)))
           ((start-an-identifier-p input)
-           (let ((selectors
-                  (uiop:while-collecting (acc)
-                    (acc
-                     (uiop:strcat character
-                                  (core-reader:read-string-till
-                                    (lambda (c)
-                                      (or (white-space-p c) (find c ",{")))
-                                    input)))
-                    (loop (if (char= #\, (peek-char t input nil #\Nul))
-                              (acc
-                               (core-reader:read-string-till
-                                 (lambda (c)
-                                   (or (white-space-p c) (find c ",{")))
-                                 input))
-                              (return))))))
+           (let ((selectors (consume-selectors input character)))
              (if (char= #\{ (peek-char t input nil #\Nul))
                  (make-qualified-rule :selectors selectors
                                       :declarations (read-style input))
