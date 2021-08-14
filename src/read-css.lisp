@@ -687,13 +687,39 @@
 
 (defstruct (class-selector (:include css-selector)))
 
+(defstruct qualified-rule
+  (selectors nil :type list)
+  (declarations nil :type list))
+
 (defun |.-reader| (input character)
   (let ((next (peek-char nil input nil nil)))
     (cond ((null next) (make-delim-token :value (string character)))
           ((digit-char-p next 10)
            (float (/ (consume-a-numeric-token input) 10)))
           ((start-an-identifier-p input)
-           (make-class-selector :name (consume-a-name input)))
+           (let ((selectors
+                  (uiop:while-collecting (acc)
+                    (acc
+                     (uiop:strcat character
+                                  (core-reader:read-string-till
+                                    (lambda (c)
+                                      (or (white-space-p c) (find c ",{")))
+                                    input)))
+                    (loop (if (char= #\, (peek-char t input nil #\Nul))
+                              (acc
+                               (core-reader:read-string-till
+                                 (lambda (c)
+                                   (or (white-space-p c) (find c ",{")))
+                                 input))
+                              (return))))))
+             (if (char= #\{ (peek-char t input nil #\Nul))
+                 (make-qualified-rule :selectors selectors
+                                      :declarations (read-style input))
+                 (error 'simple-parse-error
+                        :format-control "Unknown syntax: selectors follows ~S"
+                        :format-arguments (list
+                                            (peek-char t input nil
+                                                       'end-of-file))))))
           (t (make-delim-token :value (string character))))))
 
 (defstruct (cdo-token (:include css-token)))
