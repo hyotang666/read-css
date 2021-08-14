@@ -106,30 +106,24 @@
   ;; https://www.w3.org/TR/css-syntax-3/#letter
   (unless (boundp '+letters+)
     (defconstant +letters+
-      (concatenate 'string +uppercase-letters+ +lowercase-letters+))))
-
-;; https://www.w3.org/TR/css-syntax-3/#newline
-
-(unless (boundp '+newlines+)
-  (defconstant +newlines+ (coerce '(#\Newline #\Return #\Page) 'string)))
-
-;; https://www.w3.org/TR/css-syntax-3/#newline
-
-(unless (boundp '+white-spaces+)
-  (defconstant +white-spaces+
-    (concatenate 'string +newlines+ '(#\Tab #\Space))))
-
-;; https://www.w3.org/TR/css-syntax-3/#non-printable-code-point
-
-(unless (boundp '+non-printable-code-point+)
-  (defconstant +non-printable-code-point+
-    (concatenate 'list
-                 (loop :for i :upfrom 0 :to 8
-                       :collect (code-char i))
-                 (string #\Tab)
-                 (loop :for i :upfrom #xE :to #x1F
-                       :collect (code-char i))
-                 (string (code-char #x7F)))))
+      (concatenate 'string +uppercase-letters+ +lowercase-letters+)))
+  ;; https://www.w3.org/TR/css-syntax-3/#newline
+  (unless (boundp '+newlines+)
+    (defconstant +newlines+ (coerce '(#\Newline #\Return #\Page) 'string)))
+  ;; https://www.w3.org/TR/css-syntax-3/#newline
+  (unless (boundp '+white-spaces+)
+    (defconstant +white-spaces+
+      (concatenate 'string +newlines+ '(#\Tab #\Space))))
+  ;; https://www.w3.org/TR/css-syntax-3/#non-printable-code-point
+  (unless (boundp '+non-printable-code-point+)
+    (defconstant +non-printable-code-point+
+      (concatenate 'list
+                   (loop :for i :upfrom 0 :to 8
+                         :collect (code-char i))
+                   (string #\Tab)
+                   (loop :for i :upfrom #xE :to #x1F
+                         :collect (code-char i))
+                   (string (code-char #x7F))))))
 
 ;;;; PREDICATES
 
@@ -151,6 +145,9 @@
        (uiop:list-to-hash-set +non-printable-code-point+)))
   (defun non-printable-code-point-p (char)
     (values (gethash char non-printable-code-point))))
+
+(let ((white-spaces (uiop:list-to-hash-set (coerce +white-spaces+ 'list))))
+  (defun white-space-p (char) (values (gethash char white-spaces))))
 
 ;;;; CONSUMERS
 ;;;; 4.Tokenization TODO list.
@@ -182,6 +179,18 @@
  | [ ] 5.4.7  Consume a simple block
  | [ ] 5.4.8  Consume a function
  |#
+
+(declaim
+ (ftype (function (css-input-stream) (values &optional)) consume-white-spaces))
+
+(defun consume-white-spaces (input)
+  (loop :for c = (read-char input nil nil)
+        :if (null c)
+          :do (loop-finish)
+        :else :if (not (white-space-p c))
+          :do (unread-char c input)
+              (loop-finish))
+  (values))
 
 ;;;; 4.3.8. Check if two code points are a valid escape
 ;;; https://www.w3.org/TR/css-syntax-3/#starts-with-a-valid-escape
@@ -327,6 +336,7 @@
 (defun consume-a-name
        (&optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
+  (consume-white-spaces input)
   (with-output-to-string (*standard-output*)
     (loop :for c = (read-char input nil nil)
           :if (null c)
@@ -418,7 +428,7 @@
                         (loop-finish)
                   :else :if (char= #\) c)
                     :do (loop-finish)
-                  :else :if (find c +white-spaces+)
+                  :else :if (white-space-p c)
                     :do (let ((next (peek-char t input nil nil)))
                           (cond
                             ((null next)

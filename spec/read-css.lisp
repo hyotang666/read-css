@@ -162,6 +162,11 @@
 	      (read-char in))))
 :values ("foo" #\:)
 
+#?(with-input-from-string (in "   name-with-white-spaces")
+    (consume-a-name in))
+=> "name-with-white-spaces"
+,:test equal
+
 (requirements-about CONSUME-A-NUMBER :doc-type function)
 
 ;;;; Description:
