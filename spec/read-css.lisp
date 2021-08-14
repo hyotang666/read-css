@@ -617,7 +617,7 @@
 :multiple-value-satisfies
 (lambda (list char)
   (& (equalp (list "padding-top"
-		   (read-css::make-dimension-token :value 6 :type nil :unit "px"))
+		   (list (read-css::make-dimension-token :value 6 :type nil :unit "px")))
 	     list)
      (eql char #\a)))
 
@@ -718,14 +718,15 @@
 	     (& (equalp result
 			(list (read-css::make-qualified-rule
 				:selectors '(".jishin")
-				:declarations (list "background"
-						    (read-css::make-function-token
-						      :name "hsla"
-						      :args (list 0
-								  (read-css::make-percentage-token :value 0)
-								  (read-css::make-percentage-token :value 95)
-								  1.0))
-						    "height"
-						    (read-css::make-dimension-token :value 65 :type nil :unit "px")
-						    "padding-top"
-						    (read-css::make-dimension-token :value 6 :type nil :unit "px")))))))
+				:declarations
+				(list "background"
+				      (list (read-css::make-function-token
+					      :name "hsla"
+					      :args (list 0
+							  (read-css::make-percentage-token :value 0)
+							  (read-css::make-percentage-token :value 95)
+							  1.0)))
+				      "height"
+				      (list (read-css::make-dimension-token :value 65 :type nil :unit "px"))
+				      "padding-top"
+				      (list (read-css::make-dimension-token :value 6 :type nil :unit "px"))))))))

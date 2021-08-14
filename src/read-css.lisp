@@ -617,22 +617,19 @@
                         (error 'simple-parse-error
                                :format-control "~S is invalid after property key."
                                :format-arguments (list colon?)))))
-          :and :collect (read-style input)
-          :and :do (let ((semi-colon? (peek-char t input nil nil)))
-                     (cond
-                       ((null semi-colon?)
-                        (signal 'end-of-css :stream input)
-                        (loop-finish))
-                       ((char= #\; semi-colon?) (read-char input)) ; successfully
-                                                                   ; consume.
-                       ((char= #\} semi-colon?)
-                        (signal 'simple-parse-error
-                                :format-control "Missing semi-collon in the declaration.")
-                        (loop-finish))
-                       (t
-                        (error 'simple-parse-error
-                               :format-control "~S is invalid after property value."
-                               :format-arguments (list semi-colon?)))))))
+          :and :collect (loop :for c = (peek-char t input nil nil)
+                              :if (null c)
+                                :do (signal 'end-of-css :stream input)
+                                    (loop-finish)
+                              :else :if (char= #\; c)
+                                :do (read-char input)
+                                    (loop-finish)
+                              :else :if (char= #\} c)
+                                :do (signal 'simple-parse-error
+                                            :format-control "Missing semi-collon in the declaration.")
+                                    (loop-finish)
+                              :else
+                                :collect (read-style input))))
 
 (defun |"-reader| (stream character) (consume-a-string-token character stream))
 
