@@ -648,11 +648,17 @@
            token))
         (t (make-delim-token :value (string character)))))
 
+(defstruct css-selector (name (error "NAME is required.") :type string))
+
+(defstruct (class-selector (:include css-selector)))
+
 (defun |.-reader| (input character)
   (let ((next (peek-char nil input nil nil)))
     (cond ((null next) (make-delim-token :value (string character)))
           ((digit-char-p next 10)
            (float (/ (consume-a-numeric-token input) 10)))
+          ((start-an-identifier-p input)
+           (make-class-selector :name (consume-a-name input)))
           (t (make-delim-token :value (string character))))))
 
 (defstruct (cdo-token (:include css-token)))
