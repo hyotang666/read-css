@@ -654,14 +654,18 @@
 (defun consume-selectors (input first-char)
   (uiop:while-collecting (acc)
     (acc
-     (uiop:strcat first-char
-                  (core-reader:read-string-till
-                    (lambda (c) (or (white-space-p c) (find c ",{"))) input)))
-    (loop (if (char= #\, (peek-char t input nil #\Nul))
-              (acc
-               (core-reader:read-string-till
-                 (lambda (c) (or (white-space-p c) (find c ",{"))) input))
-              (return)))))
+     (string-right-trim +white-spaces+
+                        (uiop:strcat first-char
+                                     (core-reader:read-string-till
+                                       (lambda (c) (find c ",{")) input))))
+    (loop (if (not (char= #\, (peek-char t input nil #\Nul)))
+              (return)
+              (progn
+               (read-char input)
+               (acc
+                (string-right-trim +white-spaces+
+                                   (core-reader:read-string-till
+                                     (lambda (c) (find c ",{")) input))))))))
 
 (defun |#-reader| (input character)
   (cond
