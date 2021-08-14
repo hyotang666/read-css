@@ -572,7 +572,22 @@
 :satisfies (lambda (result)
 	     (& (typep result 'read-css::function-token)
 		(equal "fun-name" (read-css::function-token-name result))
-		(equal '("a" "b") (read-css::function-token-args result))))
+		(equalp (list (read-css::make-ident-token :value "a")
+			      (read-css::make-ident-token :value "b"))
+			(read-css::function-token-args result))))
+
+; Close paren will be consumed.
+#?(with-input-from-string (in ")a")
+    (let ((in (read-css::ensure-input-stream in)))
+      (values (consume-a-function "fun-name" in)
+	      (read-char in))))
+:multiple-value-satisfies
+(lambda (fun-token char)
+  (& (equalp (read-css::make-function-token :name "fun-name"
+					    :args nil)
+	     fun-token)
+     (eql #\a char)))
+
 
 (requirements-about READ-CSS :doc-type function)
 
