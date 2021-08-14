@@ -3,7 +3,7 @@
   (:import-from :read-css #:read-css #:consume-a-number #:consume-a-numeric-token
 		#:consume-a-name #:consume-an-ident-like-token #:consume-a-url-token
 		#:consume-an-escaped-code-point #:consume-a-string-token
-		#:consume-a-function #:start-an-identifier-p))
+		#:consume-a-function #:start-an-identifier-p #:consume-a-simple-block))
 (in-package :read-css.spec)
 (setup :read-css)
 
@@ -484,6 +484,57 @@
 							1.00))
 	     function-token)
      (eql #\; char)))
+
+(requirements-about CONSUME-A-SIMPLE-BLOCK :doc-type function)
+
+;;;; Description:
+
+#+syntax (CONSUME-A-SIMPLE-BLOCK end-char input) ; => result
+
+;;;; Arguments and Values:
+
+; end-char := (or null character)
+
+; input := css-input-stream
+
+; result := list
+
+;;;; Affected By:
+
+;;;; Side-Effects:
+
+;;;; Notes:
+
+;;;; Exceptional-Situations:
+
+;;;; Tests:
+#?(with-input-from-string (in "   \"hoge\"")
+    (let ((*readtable* (named-readtables:find-readtable 'read-css::css-readtable)))
+      (consume-a-simple-block nil (read-css::ensure-input-stream in))))
+:satisfies (lambda (result)
+	     (& (listp result)
+		(= 1 (length result))
+		(typep (car result) 'read-css::string-token)
+		(equal "hoge" (read-css::string-token-value (car result)))))
+,:ignore-signals nil
+
+#?(with-input-from-string (in "a,b,c)d")
+    (let ((in (read-css::ensure-input-stream in)))
+      (values (consume-a-simple-block #\) in)
+	      (read-char in))))
+:multiple-value-satisfies
+(lambda (list char)
+  (& (equalp list
+	     (list (read-css::make-ident-token :value "a")
+		   (read-css::make-ident-token :value "b")
+		   (read-css::make-ident-token :value "c")))
+     (eql char #\d)))
+
+#?(with-input-from-string (in "}a")
+    (let ((in (read-css::ensure-input-stream in)))
+      (values (consume-a-simple-block #\} in)
+	      (read-char in))))
+:values (() #\a)
 
 (requirements-about CONSUME-A-FUNCTION :doc-type function)
 

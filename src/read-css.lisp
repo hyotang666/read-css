@@ -548,31 +548,23 @@
   ;; Note: This algorithm assumes that the current input token has
   ;; already been read open token e.g. #\( #\[ #\{.
   ;; If end-char is `NIL`, do implicit list behavior.
-  (loop :for c = (read-char input nil nil)
-        ;; EOF check.
+  (loop :for c = (progn (consume-white-spaces input) (read-char input nil nil))
         :if (null c)
           :do (signal 'end-of-css :stream input)
               (loop-finish)
-        ;; Collect components.
-        :else :if (char= #\, c)
-          :collect nil ; as null component.
         :else :if (eql end-char c)
           :do (loop-finish)
-        :else :if (char= #\{ c)
-          :collect (consume-a-simple-block #\} input)
-        :else :if (char= #\( c)
-          :collect (consume-a-simple-block #\) input)
-        :else :if (char= #\[ c)
-          :collect (consume-a-simple-block #\] input)
+        :else :if (char= #\, c)
+          :collect nil ; as null component.
         :else
           :collect (progn
                     (unread-char c input)
-                    (consume-an-ident-like-token input))
-        ;; Loop end check.
-        :if (eql #\, (peek-char t input nil nil))
-          :do (read-char input)
-        :else
-          :do (loop-finish)))
+                    (consume-a-component-value input))
+          :and :do (let ((more? (peek-char t input nil nil)))
+                     (cond ((null more?) (loop-finish))
+                           ((char= #\, more?) (read-char input)) ; successfully
+                                                                 ; discard.
+                           ((null end-char) (loop-finish))))))
 
 ;;;; 5.4.8. Consume a function
 ;;; https://www.w3.org/TR/css-syntax-3/#ref-for-typedef-function-token%E2%91%A8
