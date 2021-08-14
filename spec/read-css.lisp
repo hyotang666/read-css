@@ -700,3 +700,29 @@
     (read-css in))
 => (0.5e-3 0.5e-3 0.5e-3 -0.5e-3 .5e3 .5e3)
 ,:test equal
+
+#?(with-input-from-string (in ".jishin")
+    (read-css in))
+:satisfies (lambda (result)
+	     (& (listp result)
+		(= 1 (length result))
+		(let ((token (car result)))
+		  (& (typep token 'read-css::class-selector)
+		     (equal "jishin" (read-css::css-selector-name token))))))
+
+#?(with-input-from-string (in ".jishin {background:hsla(0,0%,95%,1.00); height:65px; padding-top:6px;}")
+    (read-css in))
+:satisfies (lambda (result)
+	     (& (equalp result
+			(list (read-css::make-class-selector :name "jishin")
+			      (list "background"
+				    (read-css::make-function-token
+				      :name "hsla"
+				      :args (list 0
+						  (read-css::make-percentage-token :value 0)
+						  (read-css::make-percentage-token :value 95)
+						  1.0))
+				    "height"
+				    (read-css::make-dimension-token :value 65 :type nil :unit "px")
+				    "padding-top"
+				    (read-css::make-dimension-token :value 6 :type nil :unit "px"))))))

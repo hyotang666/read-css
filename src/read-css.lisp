@@ -781,7 +781,7 @@
                     (read-char input #| actually read |#)))
           ((or (find char "+-") (digit-char-p char 10))
            (consume-a-numeric-token input))
-          (t (read input eof-error-p eof-value)))))))
+          (t (consume-an-ident-like-token input)))))))
 
 (declaim
  (ftype (function (&optional (or boolean stream))
