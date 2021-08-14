@@ -471,6 +471,20 @@
 		(equal "#IDofSVGPath"
 		       (read-css::url-token-value result))))
 
+#?(with-input-from-string (in "hsla(0,0%,95%,1.00);")
+    (let ((in (read-css::ensure-input-stream in)))
+      (values (consume-an-ident-like-token in)
+	      (read-char in))))
+:multiple-value-satisfies
+(lambda (function-token char)
+  (& (equalp (read-css::make-function-token :name "hsla"
+					    :args (list 0
+							(read-css::make-percentage-token :value 0)
+							(read-css::make-percentage-token :value 95)
+							1.00))
+	     function-token)
+     (eql #\; char)))
+
 (requirements-about CONSUME-A-FUNCTION :doc-type function)
 
 ;;;; Description:
