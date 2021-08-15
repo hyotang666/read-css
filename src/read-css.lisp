@@ -621,7 +621,7 @@
           :do (signal 'end-of-css :stream input)
               (loop-finish)
         :else :if (eql end-char c)
-          :do (read-char input) ;discar end-char.
+          :do (read-char input) ; discar end-char.
               (loop-finish)
         :else :if (char= #\, c)
           :collect nil ; as null component.
@@ -838,7 +838,7 @@
            (make-qualified-rule :selectors selectors
                                 :declarations (read-style input))
            (error 'simple-parse-error
-                  :format-control "Unknown syntax: selectors follows ~S"
+                  :format-control "Unknown syntax: Selectors follows ~S"
                   :format-arguments (list
                                       (peek-char t input nil 'end-of-file))))))
     (t (make-delim-token :value (string character)))))
@@ -887,7 +887,7 @@
                  (make-qualified-rule :selectors selectors
                                       :declarations (read-style input))
                  (error 'simple-parse-error
-                        :format-control "Unknown syntax: selectors follows ~S"
+                        :format-control "Unknown syntax: Selectors follows ~S"
                         :format-arguments (list
                                             (peek-char t input nil
                                                        'end-of-file))))))
