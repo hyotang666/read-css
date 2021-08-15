@@ -515,6 +515,10 @@
 
 (defstruct (ident-token (:include string-token)))
 
+(defstruct (function-token (:include css-token))
+  (name (error "NAME is required.") :type string)
+  (args (error "VALUE is required.") :type list))
+
 (declaim
  (ftype (function (&optional (or boolean stream))
          (values (or url-token bad-url-token function-token ident-token)
@@ -627,10 +631,6 @@
 
 ;;;; 5.4.8. Consume a function
 ;;; https://www.w3.org/TR/css-syntax-3/#ref-for-typedef-function-token%E2%91%A8
-
-(defstruct (function-token (:include css-token))
-  (name (error "NAME is required.") :type string)
-  (args (error "VALUE is required.") :type list))
 
 (defun consume-a-function
        (name
