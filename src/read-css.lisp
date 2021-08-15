@@ -674,13 +674,13 @@
          (loop :for c = (read-char input nil nil)
                :repeat 6
                :if (null c)
-                 :do (loop-finish)
+                 :do (return)
                :else :if (digit-char-p c 16)
                  :collect :it
                :else
-                 :do (unread-char c input)
-                     (loop-finish))))
-    (case (length hex)
+                 :do (loop-finish)
+               :finally (unread-char c input))))
+    (ecase (length hex)
       (3
        (apply #'cl-colors2:rgb
               (mapcar

@@ -4,7 +4,7 @@
 		#:consume-a-name #:consume-an-ident-like-token #:consume-a-url-token
 		#:consume-an-escaped-code-point #:consume-a-string-token
 		#:consume-a-function #:start-an-identifier-p #:consume-a-simple-block
-		#:|{-reader|))
+		#:|{-reader| #:|#rgb-reader|))
 (in-package :read-css.spec)
 (setup :read-css)
 
@@ -595,6 +595,39 @@
 					    :args nil)
 	     fun-token)
      (eql #\a char)))
+
+(requirements-about |#rgb-reader| :doc-type function)
+
+;;;; Description:
+
+#+syntax (|#rgb-reader| input hash) ; => result
+
+;;;; Arguments and Values:
+
+; input := 
+
+; hash := 
+
+; result := 
+
+;;;; Affected By:
+
+;;;; Side-Effects:
+
+;;;; Notes:
+
+;;;; Exceptional-Situations:
+
+;;;; Tests:
+#?(with-input-from-string (in "12345678")
+    (values (|#rgb-reader| in #\#)
+	    (read-char in)))
+:multiple-value-satisfies
+(lambda (color char)
+  (& (equalp color (cl-colors2:rgb (float (/ #x12 #xFF))
+				   (float (/ #x34 #xFF))
+				   (float (/ #x56 #xFF))))
+     (eql char #\7)))
 
 (requirements-about |{-reader| :doc-type function)
 
