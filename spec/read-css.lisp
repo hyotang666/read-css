@@ -601,6 +601,28 @@
 	      (read-char in))))
 :values (() #\a)
 
+#?(with-input-from-string (in "1,1%,95%,1.00)a")
+    (let ((in (read-css::ensure-input-stream in)))
+      (values (consume-a-simple-block #\) in)
+	      (read-char in))))
+:multiple-value-satisfies
+(lambda (list char)
+  (& (equalp list
+	     (list (read-css::make-number-token :value 1)
+		   (read-css::make-percentage-token :value 1)
+		   (read-css::make-percentage-token :value 95)
+		   (read-css::make-number-token :value 1.0)))
+     (eql char #\a)))
+
+#?(with-input-from-string (in "1,0%,95%,1.00)a")
+    (let ((in (read-css::ensure-input-stream in)))
+      (values (read-style in nil nil t)
+	      (read-char in))))
+:multiple-value-satisfies
+(lambda (token char)
+  (& (equalp token (read-css::make-number-token :value 1))
+     (eql #\, char)))
+
 (requirements-about CONSUME-A-FUNCTION :doc-type function)
 
 ;;;; Description:
