@@ -645,9 +645,7 @@
 
 (defstruct (delim-token (:include string-token)))
 
-(declaim
- (ftype (function (stream character) (values (or null delim-token) &optional))
-        |/-reader|))
+(declaim (ftype (function (stream character)) |/-reader|))
 
 (defun |/-reader| (input character)
   (let ((next (read-char input nil nil)))
