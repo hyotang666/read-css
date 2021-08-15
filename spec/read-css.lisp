@@ -300,27 +300,27 @@
 ;;;; Tests:
 ; Integer
 #?(with-input-from-string (in "1") (consume-a-numeric-token in))
-=> 1
+:satisfies (lambda (x) (equalp x (read-css::make-number-token :value 1)))
 #?(with-input-from-string (in "+1") (consume-a-numeric-token in))
-=> 1
+:satisfies (lambda (x) (equalp x (read-css::make-number-token :value 1)))
 #?(with-input-from-string (in "-1") (consume-a-numeric-token in))
-=> -1
+:satisfies (lambda (x) (equalp x (read-css::make-number-token :value -1)))
 
 ; Float.
 #?(with-input-from-string (in "1.0") (consume-a-numeric-token in))
-=> 1.0
+:satisfies (lambda (x) (equalp x (read-css::make-number-token :value 1.0)))
 #?(with-input-from-string (in "+1.0") (consume-a-numeric-token in))
-=> 1.0
+:satisfies (lambda (x) (equalp x (read-css::make-number-token :value 1.0)))
 #?(with-input-from-string (in "-1.0") (consume-a-numeric-token in))
-=> -1.0
+:satisfies (lambda (x) (equalp x (read-css::make-number-token :value -1.0)))
 
 ; Exponention.
 #?(with-input-from-string (in "1.0e5") (consume-a-numeric-token in))
-=> 1.0e5
+:satisfies (lambda (x) (equalp x (read-css::make-number-token :value 1.0e5)))
 #?(with-input-from-string (in "+1.0e+5") (consume-a-numeric-token in))
-=> 1.0e+5
+:satisfies (lambda (x) (equalp x (read-css::make-number-token :value 1.0e+5)))
 #?(with-input-from-string (in "-1.0e-5") (consume-a-numeric-token in))
-=> -1.0e-5
+:satisfies (lambda (x) (equalp x (read-css::make-number-token :value -1.0e-5)))
 
 ; Percentage token.
 #?(with-input-from-string (in "50%") (consume-a-numeric-token in))
@@ -486,10 +486,10 @@
 :multiple-value-satisfies
 (lambda (function-token char)
   (& (equalp (read-css::make-function-token :name "hsla"
-					    :args (list 0
+					    :args (list (read-css::make-number-token :value 0)
 							(read-css::make-percentage-token :value 0)
 							(read-css::make-percentage-token :value 95)
-							1.00))
+							(read-css::make-number-token :value 1.00)))
 	     function-token)
      (eql #\; char)))
 
@@ -698,48 +698,49 @@
 ; Integer
 #?(with-input-from-string (in "0")
     (read-css in))
-=> (0)
-,:test equal
+:satisfies (lambda (x) (equalp x (list (read-css::make-number-token :value 0))))
 
 ; Signed integer.
 #?(with-input-from-string (in "+1")
     (read-css in))
-=> (1)
-,:test equal
+:satisfies (lambda (x) (equalp x (list (read-css::make-number-token :value 1))))
 
 #?(with-input-from-string (in "-1")
     (read-css in))
-=> (-1)
-,:test equal
+:satisfies (lambda (x) (equalp x (list (read-css::make-number-token :value -1))))
 
 #?(with-input-from-string (in "+1 -1")
     (read-css in))
-=> (1 -1)
-,:test equal
+:satisfies (lambda (x) (equalp x (list (read-css::make-number-token :value 1)
+				       (read-css::make-number-token :value -1))))
 
 ; Float.
 #?(with-input-from-string (in "0.5")
     (read-css in))
-=> (0.5)
-,:test equal
+:satisfies (lambda (x) (equalp x (list (read-css::make-number-token :value 0.5))))
 
 ; Signed float.
 #?(with-input-from-string (in "+0.5 -0.5")
     (read-css in))
-=> (0.5 -0.5)
-,:test equal
+:satisfies (lambda (x) (equalp x (list (read-css::make-number-token :value 0.5)
+				       (read-css::make-number-token :value -0.5))))
 
 ; Starts with dot.
 #?(with-input-from-string (in ".5 +.5 -.5")
     (read-css in))
-=> (0.5 0.5 -0.5)
-,:test equal
+:satisfies (lambda (x) (equalp x (list (read-css::make-number-token :value 0.5)
+				       (read-css::make-number-token :value 0.5)
+				       (read-css::make-number-token :value -0.5))))
 
 ; Exponential.
 #?(with-input-from-string (in "0.5e-3 0.5E-3 +0.5e-3 -0.5E-3 .5e3 .5E3")
     (read-css in))
-=> (0.5e-3 0.5e-3 0.5e-3 -0.5e-3 .5e3 .5e3)
-,:test equal
+:satisfies (lambda (x) (equalp x (list (read-css::make-number-token :value 0.5e-3)
+				       (read-css::make-number-token :value 0.5e-3)
+				       (read-css::make-number-token :value 0.5e-3)
+				       (read-css::make-number-token :value -0.5e-3)
+				       (read-css::make-number-token :value .5e3)
+				       (read-css::make-number-token :value .5e3))))
 
 #?(with-input-from-string (in ".jishin")
     (read-css in))
@@ -762,10 +763,10 @@
 				(list "background"
 				      (list (read-css::make-function-token
 					      :name "hsla"
-					      :args (list 0
+					      :args (list (read-css::make-number-token :value 0)
 							  (read-css::make-percentage-token :value 0)
 							  (read-css::make-percentage-token :value 95)
-							  1.0)))
+							  (read-css::make-number-token :value 1.0))))
 				      "height"
 				      (list (read-css::make-dimension-token :value 65 :type nil :unit "px"))
 				      "padding-top"
