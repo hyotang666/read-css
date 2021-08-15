@@ -639,6 +639,89 @@
         &aux (input (ensure-input-stream input)))
   (make-function-token :name name :args (consume-a-simple-block #\) input)))
 
+;;;; 5.4.5. Consume a declaration
+;;; https://www.w3.org/TR/css-syntax-3/#consume-declaration
+
+(defstruct css-declaration
+  (name (error "NAME is required.") :type string)
+  (importantp nil :type boolean)
+  (list nil :type list))
+
+(declaim
+ (ftype (function (character css-input-stream) (values list &optional))
+        consume-components))
+
+(defun consume-components (end-char input)
+  ;; NOTE: END-CHAR is not consumed.
+  (loop :for c := (peek-char t input nil nil)
+        :if (null c)
+          :do (signal 'end-of-css :stream input)
+              (loop-finish)
+        :else :if (char= end-char c)
+          :do (loop-finish)
+        :else :if (char= #\, c)
+          :collect nil ; as null component.
+        :else
+          :collect (loop :for c = (peek-char t input nil nil)
+                         :if (null c)
+                           :do (signal 'end-of-css :stream input)
+                               (loop-finish)
+                         :else :if (or (char= #\, c) (char= end-char c))
+                           :do (loop-finish)
+                         :else
+                           :collect (consume-a-component-value input))
+          :and :do (let ((c (peek-char t input nil nil)))
+                     (cond
+                       ((null c)
+                        (signal 'end-of-css :stream input)
+                        (loop-finish))
+                       ((char= end-char c) (loop-finish))
+                       ((char= #\, c) (read-char input)) ; discard.
+                       (t nil)))))
+
+(declaim
+ (ftype (function (&optional (or boolean stream))
+         (values (or null css-declaration) &optional))
+        consume-a-declaration))
+
+(defun consume-a-declaration
+       (&optional (input *standard-input*)
+        &aux (input (ensure-input-stream input)))
+  (let ((name (consume-a-name input))
+        (colon? (peek-char t input nil nil))
+        important?)
+    (if (not (eql #\: colon?))
+        (signal 'simple-parse-error
+                :format-control "Delaration name does not follow : is invalid. ~S"
+                :format-arguments (list colon?))
+        (make-css-declaration :name name
+                              :list (progn
+                                     (read-char input) ; discard colon.
+                                     (consume-components #\; input))
+                              :importantp important?))))
+
+;;;; 5.4.4. Consume a list of declarations
+;;; https://www.w3.org/TR/css-syntax-3/#consume-list-of-declarations
+
+(defun consume-a-list-of-declarations
+       (&optional (input *standard-input*)
+        &aux (input (ensure-input-stream input)))
+  (loop :for c = (peek-char t input nil nil)
+        :if (null c)
+          :do (signal 'end-of-css :stream input)
+              (loop-finish)
+        :else :if (char= #\} c)
+          :do (read-char input)
+              (loop-finish)
+        :else :if (char= #\@ c)
+          :collect (read-style input)
+        :else
+          :collect (consume-a-declaration input)
+          :and :do (let ((next (peek-char t input nil nil)))
+                     (cond ((null next) (signal 'end-of-css :stream input))
+                           ((char= #\; next) (read-char input)) ; discard.
+                           (t nil)))))
+
 ;;;; READERS
 ;;;; 4.3.1. Consume a token
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-token
@@ -671,45 +754,9 @@
 
 (defun |{-reader| (input open-paren)
   (declare (ignore open-paren))
-  (loop :for c = (peek-char t input nil nil)
-        :if (null c)
-          :do (signal 'end-of-css :stream input)
-              (loop-finish)
-        :else :if (char= #\} c)
-          :do (read-char input) ; discard close-paren
-              (loop-finish)
-        :else
-          :collect (consume-a-name input) ; property key.
-          :and :do (let ((colon? (peek-char t input nil nil)))
-                     (cond
-                       ((null colon?)
-                        (signal 'end-of-css :stream input)
-                        (loop-finish))
-                       ((char= #\: colon?) (read-char input)) ; successfully
-                                                              ; consume.
-                       (t
-                        (error 'simple-parse-error
-                               :format-control "~S is invalid after property key."
-                               :format-arguments (list colon?)))))
-          :and :collect (loop :for c = (peek-char t input nil nil) ; property
-                                                                   ; values.
-                              :if (null c)
-                                :do (signal 'end-of-css :stream input)
-                                    (loop-finish)
-                              :else :if (char= #\; c)
-                                :do (read-char input)
-                                    (loop-finish)
-                              :else :if (char= #\} c)
-                                :do (signal 'simple-parse-error
-                                            :format-control "Missing semi-collon in the declaration.")
-                                    (loop-finish)
-                              :else
-                                :collect (let ((*readtable*
-                                                (named-readtables:copy-named-readtable
-                                                  'css-readtable)))
-                                           (set-macro-character #\#
-                                                                '|#rgb-reader|)
-                                           (read-style input)))))
+  (let ((*readtable* (copy-readtable)))
+    (set-macro-character #\# '|#rgb-reader|)
+    (consume-a-list-of-declarations input)))
 
 (declaim
  (ftype (function (stream character) (values cl-colors2:rgb &optional))

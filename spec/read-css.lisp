@@ -685,8 +685,9 @@
 	      (read-char in))))
 :multiple-value-satisfies
 (lambda (list char)
-  (& (equalp (list "padding-top"
-		   (list (read-css::make-dimension-token :value 6 :type nil :unit "px")))
+  (& (equalp (list (read-css::make-css-declaration
+		     :name "padding-top"
+		     :list (list (list (read-css::make-dimension-token :value 6 :type nil :unit "px")))))
 	     list)
      (eql char #\a)))
 
@@ -784,46 +785,75 @@
 
 #?(with-input-from-string (in ".jishin {background:hsla(0,0%,95%,1.00); height:65px; padding-top:6px;}")
     (read-css in))
-:satisfies (lambda (result)
-	     (& (equalp result
-			(list (read-css::make-qualified-rule
-				:selectors '(".jishin")
-				:declarations
-				(list "background"
-				      (list (read-css::make-function-token
-					      :name "hsla"
-					      :args (list (read-css::make-number-token :value 0)
-							  (read-css::make-percentage-token :value 0)
-							  (read-css::make-percentage-token :value 95)
-							  (read-css::make-number-token :value 1.0))))
-				      "height"
-				      (list (read-css::make-dimension-token :value 65 :type nil :unit "px"))
-				      "padding-top"
-				      (list (read-css::make-dimension-token :value 6 :type nil :unit "px"))))))))
+:satisfies
+(lambda (result)
+  (& (equalp result
+	     (list (read-css::make-qualified-rule
+		     :selectors '(".jishin")
+		     :declarations
+		     (list (read-css::make-css-declaration
+			     :name "background"
+			     :list
+			     (list (list (read-css::make-function-token
+					   :name "hsla"
+					   :args (list (read-css::make-number-token :value 0)
+						       (read-css::make-percentage-token :value 0)
+						       (read-css::make-percentage-token :value 95)
+						       (read-css::make-number-token :value 1.0))))))
+			   (read-css::make-css-declaration
+			     :name "height"
+			     :list (list (list (read-css::make-dimension-token :value 65 :type nil :unit "px"))))
+			   (read-css::make-css-declaration
+			     :name "padding-top"
+			     :list (list (list (read-css::make-dimension-token :value 6 :type nil :unit "px"))))))))))
 
 #?(with-input-from-string (in ".commentBox{ border: 1px solid #CCC; padding: 15px 153px;}")
     (read-css in))
 :satisfies (lambda (result)
-	     (equalp result
-		     (list (read-css::make-qualified-rule
-			     :selectors '(".commentBox")
-			     :declarations
-			     (list "border"
-				   (list (read-css::make-dimension-token
-					   :value 1 :type nil :unit "px")
-					 (read-css::make-ident-token :value "solid")
-					 (cl-colors2:rgb 0.8 0.8 0.8))
-				   "padding"
-				   (list (read-css::make-dimension-token
-					   :value 15 :type nil :unit "px")
-					 (read-css::make-dimension-token
-					   :value 153 :type nil :unit "px")))))))
+	     (& (equalp result
+			(list (read-css::make-qualified-rule
+				:selectors '(".commentBox")
+				:declarations
+				(list (read-css::make-css-declaration
+					:name "border"
+					:list (list (list (read-css::make-dimension-token
+							    :value 1 :type nil :unit "px")
+							  (read-css::make-ident-token :value "solid")
+							  (cl-colors2:rgb 0.8 0.8 0.8))))
+				      (read-css::make-css-declaration
+					:name "padding"
+					:list (list (list (read-css::make-dimension-token
+							    :value 15 :type nil :unit "px")
+							  (read-css::make-dimension-token
+							    :value 153 :type nil :unit "px"))))))))))
 
 #?(with-input-from-string (in "{ background: #ffffe2; border-radius:10px;}")
     (read-css in))
 :satisfies (lambda (x)
-	     (& (equalp x `(("background" (,(cl-colors2:rgb 1.0 1.0 0.8862745))
-			     "border-radius" (,(read-css::make-dimension-token
-						 :value 10
-						 :type nil
-						 :unit "px")))))))
+	     (& (equalp x `((,(read-css::make-css-declaration
+				:name "background"
+				:list `((,(cl-colors2:rgb 1.0 1.0 0.8862745))))
+			      ,(read-css::make-css-declaration
+				 :name "border-radius"
+				 :list `((,(read-css::make-dimension-token
+					     :value 10
+					     :type nil
+					     :unit "px")))))))))
+
+#?(with-input-from-string (in "{background-size: 200px auto, 44px 76px;}")
+    (read-css in))
+:satisfies (lambda (x)
+	     (& (equalp x
+			`((,(read-css::make-css-declaration
+			      :name "background-size"
+			      :list `((,(read-css::make-dimension-token
+					  :value 200
+					  :unit "px")
+					,(read-css::make-ident-token
+					   :value "auto"))
+				      (,(read-css::make-dimension-token
+					  :value 44
+					  :unit "px")
+				       ,(read-css::make-dimension-token
+					  :value 76
+					  :unit "px")))))))))
