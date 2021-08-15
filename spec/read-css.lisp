@@ -4,7 +4,7 @@
 		#:consume-a-name #:consume-an-ident-like-token #:consume-a-url-token
 		#:consume-an-escaped-code-point #:consume-a-string-token
 		#:consume-a-function #:start-an-identifier-p #:consume-a-simple-block
-		#:|{-reader| #:|#rgb-reader|))
+		#:|{-reader| #:|#rgb-reader| #:consume-selectors))
 (in-package :read-css.spec)
 (setup :read-css)
 
@@ -167,6 +167,35 @@
     (consume-a-name in))
 => "name-with-white-spaces"
 ,:test equal
+
+(requirements-about CONSUME-SELECTORS :doc-type function)
+
+;;;; Description:
+
+#+syntax (CONSUME-SELECTORS input first-char) ; => result
+
+;;;; Arguments and Values:
+
+; input := css-input-stream
+
+; first-char := character
+
+; result := list
+
+;;;; Affected By:
+
+;;;; Side-Effects:
+
+;;;; Notes:
+
+;;;; Exceptional-Situations:
+
+;;;; Tests:
+#?(with-input-from-string (in "commentBox{")
+    (let ((in (read-css::ensure-input-stream in)))
+      (values (consume-selectors in #\.)
+	      (read-char in))))
+:values ((".commentBox") #\{)
 
 (requirements-about CONSUME-A-NUMBER :doc-type function)
 
