@@ -4,9 +4,35 @@
 		#:consume-a-name #:consume-an-ident-like-token #:consume-a-url-token
 		#:consume-an-escaped-code-point #:consume-a-string-token
 		#:consume-a-function #:start-an-identifier-p #:consume-a-simple-block
-		#:|{-reader| #:|#rgb-reader| #:consume-selectors))
+		#:|{-reader| #:|#rgb-reader| #:consume-selectors #:consume-comments))
 (in-package :read-css.spec)
 (setup :read-css)
+
+(requirements-about CONSUME-COMMENTS :doc-type function)
+
+;;;; Description:
+
+#+syntax (CONSUME-COMMENTS &optional (input *standard-input*)) ; => result
+
+;;;; Arguments and Values:
+
+; input := 
+
+; result := 
+
+;;;; Affected By:
+
+;;;; Side-Effects:
+
+;;;; Notes:
+
+;;;; Exceptional-Situations:
+
+;;;; Tests:
+#?(with-input-from-string (in " comment */a")
+    (values (consume-comments in)
+	    (read-char in)))
+:values (nil #\a)
 
 (requirements-about CONSUME-AN-ESCAPED-CODE-POINT :doc-type function)
 
