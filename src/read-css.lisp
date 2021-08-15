@@ -520,15 +520,13 @@
 ;;;; 4.3.4. Consume an ident-like token
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-ident-like-token
 
-(defstruct (ident-token (:include string-token)))
-
 (defstruct (function-token (:include css-token))
   (name (error "NAME is required.") :type string)
   (args (error "VALUE is required.") :type list))
 
 (declaim
  (ftype (function (&optional (or boolean stream))
-         (values (or url-token bad-url-token function-token ident-token)
+         (values (or url-token bad-url-token function-token simple-string)
                  &optional))
         consume-an-ident-like-token))
 
@@ -550,7 +548,7 @@
            (error 'simple-parse-error
                   :format-control "Could not parse ident like token. ~S"
                   :format-arguments (list next))))
-       (make-ident-token :value name)))))
+       name))))
 
 ;;;; 4.3.5. Consume a string token
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-string-token
@@ -693,7 +691,7 @@
 (defun consume-a-declaration
        (&optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
-  (let ((name (consume-a-name input))
+  (let ((name (read-style input))
         (colon? (peek-char t input nil nil))
         important?)
     (if (not (eql #\: colon?))
@@ -1001,8 +999,13 @@
         (declare (ignore non-terminating-p))
         (cond
           (reader-macro
-           (funcall (coerce reader-macro 'function) input
-                    (read-char input #| actually read |#)))
+           (multiple-value-call
+               (lambda (&rest values)
+                 (if values
+                     (values-list values)
+                     (read-style input eof-error-p eof-value)))
+             (funcall (coerce reader-macro 'function) input
+                      (read-char input #| actually read |#))))
           ((or (find char "+-") (digit-char-p char 10))
            (consume-a-numeric-token input))
           (t (consume-an-ident-like-token input)))))))

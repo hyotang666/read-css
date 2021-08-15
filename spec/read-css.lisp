@@ -515,8 +515,7 @@
 ; Token.
 #?(with-input-from-string (in "token") (consume-an-ident-like-token in))
 :satisfies (lambda (result)
-	     (& (typep result 'read-css::ident-token)
-		(equal "token" (read-css::ident-token-value result))))
+	     (& (equal "token" result)))
 
 ; Function.
 #?(with-input-from-string (in "function()") (consume-an-ident-like-token in))
@@ -593,10 +592,7 @@
 	      (read-char in))))
 :multiple-value-satisfies
 (lambda (list char)
-  (& (equalp list
-	     (list (read-css::make-ident-token :value "a")
-		   (read-css::make-ident-token :value "b")
-		   (read-css::make-ident-token :value "c")))
+  (& (equalp list '("a" "b" "c"))
      (eql char #\d)))
 
 #?(with-input-from-string (in "}a")
@@ -641,9 +637,7 @@
 :satisfies (lambda (result)
 	     (& (typep result 'read-css::function-token)
 		(equal "fun-name" (read-css::function-token-name result))
-		(equalp (list (read-css::make-ident-token :value "a")
-			      (read-css::make-ident-token :value "b"))
-			(read-css::function-token-args result))))
+		(equalp '("a" "b") (read-css::function-token-args result))))
 
 ; Close paren will be consumed.
 #?(with-input-from-string (in ")a")
@@ -850,7 +844,7 @@
 					:name "border"
 					:list (list (list (read-css::make-dimension-token
 							    :value 1 :type nil :unit "px")
-							  (read-css::make-ident-token :value "solid")
+							  "solid"
 							  (cl-colors2:rgb 0.8 0.8 0.8))))
 				      (read-css::make-css-declaration
 					:name "padding"
@@ -881,11 +875,23 @@
 			      :list `((,(read-css::make-dimension-token
 					  :value 200
 					  :unit "px")
-					,(read-css::make-ident-token
-					   :value "auto"))
+					,"auto")
 				      (,(read-css::make-dimension-token
 					  :value 44
 					  :unit "px")
 				       ,(read-css::make-dimension-token
 					  :value 76
 					  :unit "px")))))))))
+
+#?(with-input-from-string (in "{/* overflow:auto; */height:250px;position:relative;}")
+    (read-css in))
+:satisfies (lambda (x)
+	     (& (equalp x
+			`((,(read-css::make-css-declaration
+			      :name "height"
+			      :list `((,(read-css::make-dimension-token
+					  :value 250
+					  :unit "px"))))
+			    ,(read-css::make-css-declaration
+			       :name "position"
+			       :list `(("relative"))))))))
