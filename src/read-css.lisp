@@ -692,7 +692,7 @@
         important?)
     (if (not (eql #\: colon?))
         (signal 'simple-parse-error
-                :format-control "Delaration name does not follow : is invalid. ~S"
+                :format-control "Declaration name does not follow : is invalid. ~S"
                 :format-arguments (list colon?))
         (make-css-declaration :name name
                               :list (progn
