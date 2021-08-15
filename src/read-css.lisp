@@ -621,7 +621,8 @@
           :do (signal 'end-of-css :stream input)
               (loop-finish)
         :else :if (eql end-char c)
-          :do (loop-finish)
+          :do (read-char input) ;discar end-char.
+              (loop-finish)
         :else :if (char= #\, c)
           :collect nil ; as null component.
         :else
