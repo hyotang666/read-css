@@ -616,7 +616,7 @@
   ;; Note: This algorithm assumes that the current input token has
   ;; already been read open token e.g. #\( #\[ #\{.
   ;; If end-char is `NIL`, do implicit list behavior.
-  (loop :for c = (progn (consume-white-spaces input) (read-char input nil nil))
+  (loop :for c = (peek-char t input nil nil)
         :if (null c)
           :do (signal 'end-of-css :stream input)
               (loop-finish)
