@@ -581,10 +581,9 @@
     (let ((*readtable* (named-readtables:find-readtable 'read-css::css-readtable)))
       (consume-a-simple-block nil (read-css::ensure-input-stream in))))
 :satisfies (lambda (result)
-	     (& (listp result)
-		(= 1 (length result))
-		(typep (car result) 'read-css::string-token)
-		(equal "hoge" (read-css::string-token-value (car result)))))
+	     (& (equalp result
+			(list (read-css::make-string-token
+				:value "hoge")))))
 ,:ignore-signals nil
 
 #?(with-input-from-string (in "a,b,c)d")
