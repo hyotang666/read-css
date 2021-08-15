@@ -789,3 +789,12 @@
 					   :value 15 :type nil :unit "px")
 					 (read-css::make-dimension-token
 					   :value 153 :type nil :unit "px")))))))
+
+#?(with-input-from-string (in "{ background: #ffffe2; border-radius:10px;}")
+    (read-css in))
+:satisfies (lambda (x)
+	     (& (equalp x `(("background" (,(cl-colors2:rgb 1.0 1.0 0.8862745))
+			     "border-radius" (,(read-css::make-dimension-token
+						 :value 10
+						 :type nil
+						 :unit "px")))))))
