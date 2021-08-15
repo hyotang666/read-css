@@ -1021,16 +1021,8 @@
          (&optional (input *standard-input*)
           &aux (input (ensure-input-stream input)))
     (let ((*readtable* (named-readtables:find-readtable 'css-readtable)))
-      (uiop:while-collecting (acc)
-        (loop (multiple-value-call
-                  (lambda (&rest styles)
-                    (typecase styles
-                      (null) ; Zero values.
-                      ((cons * null) ; One value.
-                       (if (eq end-of-file (car styles))
-                           (return)
-                           (acc (car styles))))
-                      (otherwise ; Some values
-                       (error "NIY"))))
-                (read-style input nil end-of-file)))))))
-
+      (loop :for style = (read-style input nil end-of-file)
+            :if (eq style end-of-file)
+              :do (loop-finish)
+            :else
+              :collect style))))
