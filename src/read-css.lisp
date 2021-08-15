@@ -625,9 +625,7 @@
         :else :if (char= #\, c)
           :collect nil ; as null component.
         :else
-          :collect (progn
-                    (unread-char c input)
-                    (consume-a-component-value input))
+          :collect (consume-a-component-value input)
           :and :do (let ((more? (peek-char t input nil nil)))
                      (cond ((null more?) (loop-finish))
                            ((char= #\, more?) (read-char input)) ; successfully
