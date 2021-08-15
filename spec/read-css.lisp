@@ -150,6 +150,12 @@
 ;;;; Notes:
 
 ;;;; Exceptional-Situations:
+#?(with-input-from-string (in "")
+    (consume-a-name in))
+:signals parse-error
+#?(with-input-from-string (in "+")
+    (consume-a-name in))
+:signals parse-error
 
 ;;;; Tests:
 #?(with-input-from-string (in "name")

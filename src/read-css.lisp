@@ -376,17 +376,23 @@
        (&optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
   (consume-white-spaces input)
-  (with-output-to-string (*standard-output*)
-    (loop :for c = (read-char input nil nil)
-          :if (null c)
-            :do (loop-finish)
-          :else :if (name-code-point-p c)
-            :do (write-char c)
-          :else :if (and (char= #\\ c) (valid-escape-p input))
-            :do (write-char (consume-an-escaped-code-point input))
-          :else
-            :do (unread-char c input)
-                (loop-finish))))
+  (let ((name
+         (with-output-to-string (*standard-output*)
+           (loop :for c = (read-char input nil nil)
+                 :if (null c)
+                   :do (loop-finish)
+                 :else :if (name-code-point-p c)
+                   :do (write-char c)
+                 :else :if (and (char= #\\ c) (valid-escape-p input))
+                   :do (write-char (consume-an-escaped-code-point input))
+                 :else
+                   :do (unread-char c input)
+                       (loop-finish)))))
+    (if (equal "" name)
+        (error 'simple-parse-error
+               :format-control "Could not consume a name. ~S"
+               :format-arguments (list input))
+        name)))
 
 ;;;; 4.3.3. Consume a numeric token
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-numeric-token
