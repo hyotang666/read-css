@@ -545,11 +545,12 @@
 	      (read-char in))))
 :multiple-value-satisfies
 (lambda (function-token char)
-  (& (equalp (read-css::make-function-token :name "hsla"
-					    :args (list (read-css::make-number-token :value 0)
-							(read-css::make-percentage-token :value 0)
-							(read-css::make-percentage-token :value 95)
-							(read-css::make-number-token :value 1.00)))
+  (& (equalp (read-css::make-function-token
+	       :name "hsla"
+	       :args (list (read-css::make-number-token :value 0)
+			   (read-css::make-percentage-token :value 0)
+			   (read-css::make-percentage-token :value 95)
+			   (read-css::make-number-token :value 1.00)))
 	     function-token)
      (eql #\; char)))
 
