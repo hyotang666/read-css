@@ -236,6 +236,10 @@
   ;; https://infra.spec.whatwg.org/#surrogate
   (<= #xD800 code #xDFFF))
 
+(declaim
+ (ftype (function (&optional (or boolean stream)) (values character &optional))
+        consume-an-escaped-code-point))
+
 (defun consume-an-escaped-code-point
        (&optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
@@ -271,6 +275,10 @@
 
 ;;;; 4.3.12. Consume a number
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-a-number
+
+(declaim
+ (ftype (function (&optional (or boolean stream)) (values real &optional))
+        consume-a-number))
 
 (defun consume-a-number
        (&optional (input *standard-input*)
@@ -358,6 +366,11 @@
 ;;;; 4.3.11. Consume a name
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-name
 
+(declaim
+ (ftype (function (&optional (or boolean stream))
+         (values simple-string &optional))
+        consume-a-name))
+
 (defun consume-a-name
        (&optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
@@ -382,6 +395,11 @@
 (defstruct (dimension-token (:include number-token))
   (type nil :type (member nil :number))
   (unit (error "UNIT is required.") :type string))
+
+(declaim
+ (ftype (function (&optional (or boolean stream))
+         (values (or real percentage-token dimension-token) &optional))
+        consume-a-numeric-token))
 
 (defun consume-a-numeric-token
        (&optional (input *standard-input*)
@@ -434,6 +452,11 @@
 (defstruct (url-token (:include string-token)))
 
 (defstruct (bad-url-token (:include string-token)))
+
+(declaim
+ (ftype (function (&optional (or boolean stream))
+         (values (or url-token bad-url-token) &optional))
+        consume-a-url-token))
 
 (defun consume-a-url-token
        (&optional (input *standard-input*)
@@ -492,6 +515,12 @@
 
 (defstruct (ident-token (:include string-token)))
 
+(declaim
+ (ftype (function (&optional (or boolean stream))
+         (values (or url-token bad-url-token function-token ident-token)
+                 &optional))
+        consume-an-ident-like-token))
+
 (defun consume-an-ident-like-token
        (&optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
@@ -516,6 +545,11 @@
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-string-token
 
 (defstruct (bad-string-token (:include string-token)))
+
+(declaim
+ (ftype (function (character &optional (or boolean stream))
+         (values string-token &optional))
+        consume-a-string-token))
 
 (defun consume-a-string-token
        (character
@@ -610,6 +644,10 @@
 
 (defstruct (delim-token (:include string-token)))
 
+(declaim
+ (ftype (function (stream character) (values (or null delim-token) &optional))
+        |/-reader|))
+
 (defun |/-reader| (input character)
   (let ((next (read-char input nil nil)))
     (cond ((null next) (make-delim-token :value (string character)))
@@ -617,6 +655,12 @@
           (t
            (unread-char next input)
            (make-delim-token :value (string character))))))
+
+(declaim
+ (ftype (function (stream character) (values list &optional))
+        |(-reader|
+        |[-reader|
+        |{-reader|))
 
 (defun |(-reader| (stream character)
   (declare (ignore character))
@@ -668,6 +712,10 @@
                                                                 '|#rgb-reader|)
                                            (read-style input)))))
 
+(declaim
+ (ftype (function (stream character) (values cl-colors2:rgb &optional))
+        |#rgb-reader|))
+
 (defun |#rgb-reader| (input hash)
   (declare (ignore hash))
   (let ((hex
@@ -706,6 +754,12 @@
   (selectors nil :type list)
   (declarations nil :type list))
 
+(declaim
+ (ftype (function (css-input-stream character)
+         (values list ; of-type simple-string.
+                 &optional))
+        consume-selectors))
+
 (defun consume-selectors (input first-char)
   (uiop:while-collecting (acc)
     (acc
@@ -721,6 +775,11 @@
                 (string-right-trim +white-spaces+
                                    (core-reader:read-string-till
                                      (lambda (c) (find c ",{")) input))))))))
+
+(declaim
+ (ftype (function (stream character)
+         (values (or delim-token qualified-rule) &optional))
+        |#-reader|))
 
 (defun |#-reader| (input character)
   (cond
@@ -759,6 +818,11 @@
            token))
         (t (make-delim-token :value (string character)))))
 
+(declaim
+ (ftype (function (stream character)
+         (values (or delim-token float qualified-rule) &optional))
+        |.-reader|))
+
 (defun |.-reader| (input character)
   (let ((next (peek-char nil input nil nil)))
     (cond ((null next) (make-delim-token :value (string character)))
@@ -792,6 +856,11 @@
 
 (defstruct (at-keyword-token (:include string-token)))
 
+(declaim
+ (ftype (function (stream character)
+         (values (or at-rule at-keyword-token) &optional))
+        |@-reader|))
+
 (defun |@-reader| (input at-sign)
   (cond
     ((start-an-identifier-p input)
@@ -813,6 +882,11 @@
      (make-at-keyword-token :value (string at-sign)))))
 
 (defstruct (important-token (:include css-token)))
+
+(declaim
+ (ftype (function (stream character)
+         (values (or delim-token important-token) &optional))
+        |!-reader|))
 
 (defun |!-reader| (input !)
   (let ((name (consume-a-name input)))
