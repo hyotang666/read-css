@@ -410,7 +410,6 @@
 (defstruct (percentage-token (:include number-token)))
 
 (defstruct (dimension-token (:include number-token))
-  (type nil :type (member nil :number))
   (unit (error "UNIT is required.") :type string))
 
 (declaim
