@@ -726,25 +726,32 @@
 (defun consume-a-list-of-declarations
        (&optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
-  (loop :for c = (peek-char t input nil nil)
-        :if (null c)
-          :do (signal 'end-of-css :stream input)
-              (loop-finish)
-        :else :if (char= #\} c)
-          :do (read-char input)
-              (loop-finish)
-        :else :if (char= #\@ c)
-          :collect (read-style input t t t)
-        :else
-          :collect (handler-case (consume-a-declaration input)
-                     (name-parse-error (c)
-                       (if (eql #\} (parse-error-character c))
-                           (loop-finish)
-                           (error c))))
-          :and :do (let ((next (peek-char t input nil nil)))
-                     (cond ((null next) (signal 'end-of-css :stream input))
-                           ((char= #\; next) (read-char input)) ; discard.
-                           (t nil)))))
+  (uiop:while-collecting (acc)
+    (loop :for c = (peek-char t input nil nil)
+          :if (null c)
+            :do (signal 'end-of-css :stream input)
+                (loop-finish)
+          :else :if (char= #\} c)
+            :do (read-char input)
+                (loop-finish)
+          :else :if (char= #\@ c)
+            :do (acc (read-style input t t t))
+          :else
+            :do (handler-case (consume-a-declaration input)
+                  (name-parse-error (c)
+                    (if (eql #\} (parse-error-character c))
+                        (loop-finish)
+                        (progn
+                         (cerror "Ignore declaration." c)
+                         (warn "Discard ~S"
+                               (core-reader:read-string-till
+                                 (lambda (x) (find x ";}")) input)))))
+                  (:no-error (decl)
+                    (acc decl)))
+            :and :do (let ((next (peek-char t input nil nil)))
+                       (cond ((null next) (signal 'end-of-css :stream input))
+                             ((char= #\; next) (read-char input)) ; discard.
+                             (t nil))))))
 
 ;;;; READERS
 ;;;; 4.3.1. Consume a token

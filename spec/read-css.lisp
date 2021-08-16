@@ -1002,6 +1002,11 @@
 				       :list (list (list (read-css::make-percentage-token
 							   :value 74)))))))))
 
+#?(with-input-from-string (in "{filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#b3b3b3',GradientType=0 ); }")
+    (read-style in t t t))
+:signals parse-error ; duplicated colon.
+,:with-restarts continue
+
 (requirements-about READ-CSS :doc-type function)
 
 ;;;; Description:
