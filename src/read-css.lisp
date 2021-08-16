@@ -158,7 +158,8 @@
 
 (defun stream-start-with (string input)
   (labels ((rec (index)
-             (if (array-in-bounds-p string index)
+             (if (not (array-in-bounds-p string index))
+                 t
                  (let ((char (read-char input nil nil)))
                    (unwind-protect
                        (if (eql char (aref string index))
