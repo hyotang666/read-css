@@ -976,7 +976,7 @@
                    (error 'simple-parse-error
                           :format-control "Missing declarations after ~S."
                           :format-arguments (list selectors)))))
-            (t (internal-logical-error "NIY"))))))))
+            (t (internal-logical-error "NIY ~S" char))))))))
 
 (declaim
  (ftype (function (&optional (or boolean stream))
