@@ -38,13 +38,20 @@
 (define-condition end-of-css (end-of-file css-parse-error) ())
 
 (define-condition invalid-escape (css-parse-error)
-  ((char :initarg :character :reader invalid-char))
+  ((char :initarg :character :reader parse-error-character))
   (:report
    (lambda (this output)
      (funcall (formatter "Escape immediately follows ~S is invalid.") output
-              (invalid-char this)))))
+              (parse-error-character this)))))
 
 (define-condition simple-parse-error (css-parse-error simple-condition) ())
+
+(define-condition name-parse-error (css-parse-error)
+  ((char :initarg :character :reader parse-error-character))
+  (:report
+   (lambda (this output)
+     (funcall (formatter "Could not consume a name. ~S") output
+              (parse-error-character this)))))
 
 (define-condition internal-logical-error (simple-error) ())
 
@@ -390,9 +397,8 @@
                    :do (unread-char c input)
                        (loop-finish)))))
     (if (equal "" name)
-        (error 'simple-parse-error
-               :format-control "Could not consume a name. ~S"
-               :format-arguments (list input))
+        (error 'name-parse-error
+               :character (peek-char nil input nil 'end-of-file))
         name)))
 
 ;;;; 4.3.3. Consume a numeric token
@@ -731,8 +737,10 @@
           :collect (read-style input t t t)
         :else
           :collect (handler-case (consume-a-declaration input)
-                     (parse-error ()
-                       (loop-finish)))
+                     (name-parse-error (c)
+                       (if (eql #\} (parse-error-character c))
+                           (loop-finish)
+                           (error c))))
           :and :do (let ((next (peek-char t input nil nil)))
                      (cond ((null next) (signal 'end-of-css :stream input))
                            ((char= #\; next) (read-char input)) ; discard.
