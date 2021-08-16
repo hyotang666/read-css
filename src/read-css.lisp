@@ -82,6 +82,19 @@
                        (unread-char char input)))))))
     (rec 0)))
 
+(defun remove-if-find
+       (function list &aux (function (coerce function 'function)))
+  (let* ((head (cons :head nil)) (tail head) (found?))
+    (labels ((rec (list)
+               (if (endp list)
+                   (values (cdr head) found?)
+                   (body (car list) (cdr list))))
+             (body (elt rest)
+               (if (funcall function elt)
+                   (progn (setf found? t) (rec rest))
+                   (progn (rplacd tail (setf tail (list elt))) (rec rest)))))
+      (rec list))))
+
 ;;;; CONSTANTS
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -682,6 +695,8 @@
                        ((char= #\, c) (read-char input)) ; discard.
                        (t nil)))))
 
+(defstruct (important-token (:include css-token)))
+
 (declaim
  (ftype (function (&optional (or boolean stream))
          (values (or null css-declaration) &optional))
@@ -698,9 +713,17 @@
                 :format-control "Declaration name does not follow : is invalid. ~S"
                 :format-arguments (list colon?))
         (make-css-declaration :name name
-                              :list (progn
-                                     (read-char input) ; discard colon.
-                                     (consume-components #\; input))
+                              :list (mapcar
+                                      (lambda (x)
+                                        (multiple-value-bind (decls imp?)
+                                            (remove-if-find #'important-token-p
+                                                            x)
+                                          (setf important?
+                                                  (or important? imp?))
+                                          decls))
+                                      (progn
+                                       (read-char input) ; discard colon.
+                                       (consume-components #\; input)))
                               :importantp important?))))
 
 ;;;; 5.4.4. Consume a list of declarations
@@ -932,8 +955,6 @@
      (signal 'simple-parse-error :format-control "Missing at keyword name.")
      (make-at-keyword-token :value (string at-sign)))))
 
-(defstruct (important-token (:include css-token)))
-
 (declaim
  (ftype (function (stream character)
          (values (or delim-token important-token) &optional))
@@ -972,7 +993,8 @@
   (:macro-char #\" '|"-reader|)
   (:macro-char #\' '|"-reader|)
   (:macro-char #\{ '|{-reader|)
-  (:macro-char #\# '|#rgb-reader|))
+  (:macro-char #\# '|#rgb-reader|)
+  (:macro-char #\! '|!-reader|))
 
 ;;;; READ-CSS
 

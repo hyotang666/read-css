@@ -967,6 +967,15 @@
 				:list `((,(read-css::make-percentage-token
 					    :value 87.5))))))))
 
+#?(with-input-from-string (in "{opacity:0!important;}")
+    (read-style in t t t))
+:satisfies
+(lambda (x)
+  (& (equalp x (list (read-css::make-css-declaration
+		       :name "opacity"
+		       :importantp t
+		       :list `((,(read-css::make-number-token :value 0))))))))
+
 (requirements-about READ-CSS :doc-type function)
 
 ;;;; Description:
