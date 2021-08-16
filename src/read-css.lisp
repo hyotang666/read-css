@@ -193,18 +193,6 @@
  | [ ] 5.4.8  Consume a function
  |#
 
-(declaim
- (ftype (function (css-input-stream) (values &optional)) consume-white-spaces))
-
-(defun consume-white-spaces (input)
-  (loop :for c = (read-char input nil nil)
-        :if (null c)
-          :do (loop-finish)
-        :else :if (not (white-space-p c))
-          :do (unread-char c input)
-              (loop-finish))
-  (values))
-
 ;;;; 4.3.8. Check if two code points are a valid escape
 ;;; https://www.w3.org/TR/css-syntax-3/#starts-with-a-valid-escape
 
@@ -388,7 +376,7 @@
 (defun consume-a-name
        (&optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
-  (consume-white-spaces input)
+  (peek-char t input nil nil)
   (let ((name
          (with-output-to-string (*standard-output*)
            (loop :for c = (read-char input nil nil)
@@ -765,18 +753,7 @@
            (make-delim-token :value (string character))))))
 
 (declaim
- (ftype (function (stream character) (values list &optional))
-        |(-reader|
-        |[-reader|
-        |{-reader|))
-
-(defun |(-reader| (stream character)
-  (declare (ignore character))
-  (consume-a-simple-block #\) stream))
-
-(defun |[-reader| (stream character)
-  (declare (ignore character))
-  (consume-a-simple-block #\] stream))
+ (ftype (function (stream character) (values list &optional)) |{-reader|))
 
 (defun |{-reader| (input open-paren)
   (declare (ignore open-paren))
@@ -846,73 +823,7 @@
                                    (core-reader:read-string-till
                                      (lambda (c) (find c ",{")) input))))))))
 
-(declaim
- (ftype (function (stream character)
-         (values (or delim-token qualified-rule) &optional))
-        |#-reader|))
-
-(defun |#-reader| (input character)
-  (cond
-    ((start-an-identifier-p input)
-     (let ((selectors (consume-selectors input character)))
-       (if (char= #\{ (peek-char t input nil #\Nul))
-           (make-qualified-rule :selectors selectors
-                                :declarations (read-style input t t t))
-           (error 'simple-parse-error
-                  :format-control "Unknown syntax: Selectors follows ~S"
-                  :format-arguments (list
-                                      (peek-char t input nil 'end-of-file))))))
-    (t (make-delim-token :value (string character)))))
-
-(defun |+-reader| (input character)
-  (if (start-a-number-p input)
-      (consume-a-numeric-token input)
-      (make-delim-token :value (string character))))
-
 (defstruct (cdc-token (:include css-token)))
-
-(defun |--reader| (input character)
-  (cond
-    ((start-a-number-p input)
-     (let ((number-token (consume-a-numeric-token input)))
-       (setf (number-token-value number-token)
-               (- (number-token-value number-token)))
-       number-token))
-    ((let ((first (read-char input nil nil)) (second (read-char input nil nil)))
-       (if (and (char= #\- first) (char= #\> second))
-           (make-cdc-token)
-           (progn (unread-char second input) (unread-char first input) nil))))
-    ((start-an-identifier-p input)
-     (let ((token (consume-an-ident-like-token input)))
-       (setf (string-token-value token)
-               (uiop:strcat character (string-token-value token)))
-       token))
-    (t (make-delim-token :value (string character)))))
-
-(declaim
- (ftype (function (stream character)
-         (values (or delim-token number-token qualified-rule) &optional))
-        |.-reader|))
-
-(defun |.-reader| (input character)
-  (let ((next (peek-char nil input nil nil)))
-    (cond ((null next) (make-delim-token :value (string character)))
-          ((digit-char-p next 10)
-           (let ((numeric-token (consume-a-numeric-token input)))
-             (setf (number-token-value numeric-token)
-                     (float (/ (number-token-value numeric-token) 10)))
-             numeric-token))
-          ((start-an-identifier-p input)
-           (let ((selectors (consume-selectors input character)))
-             (if (char= #\{ (peek-char t input nil #\Nul))
-                 (make-qualified-rule :selectors selectors
-                                      :declarations (read-style input t t t))
-                 (error 'simple-parse-error
-                        :format-control "Unknown syntax: Selectors follows ~S"
-                        :format-arguments (list
-                                            (peek-char t input nil
-                                                       'end-of-file))))))
-          (t (make-delim-token :value (string character))))))
 
 (defstruct (cdo-token (:include css-token)))
 
