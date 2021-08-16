@@ -812,15 +812,6 @@
 
 (defun |"-reader| (stream character) (consume-a-string-token character stream))
 
-(defstruct (hash-token (:include string-token)
-                       (:constructor make-hash-token
-                        (&key value type &aux
-                         (type
-                          (if type
-                              :id
-                              :unrestricted)))))
-  (type :unrestricted :type (member :unrestricted :id)))
-
 (defstruct qualified-rule
   (selectors nil :type list)
   (declarations nil :type list))
