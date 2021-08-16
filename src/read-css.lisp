@@ -21,6 +21,9 @@
   (push c (kept-chars input))
   nil)
 
+(defmethod trivial-gray-streams:stream-file-position ((input css-input-stream))
+  (file-position (css-input-stream input)))
+
 ;;;; ABSTRUCT STRUCTURE
 
 (defstruct css-token)
@@ -976,6 +979,29 @@
                           :format-control "Missing declarations after ~S."
                           :format-arguments (list selectors)))))
             (t (internal-logical-error "NIY ~S" char))))))))
+
+;;;; READ-STYLE-FROM-STRING
+
+(declaim
+ (ftype (function
+         (string &optional boolean t &key
+                 (:start (mod #.array-total-size-limit))
+                 (:end (or null (mod #.array-total-size-limit))))
+         (values t (mod #.array-total-size-limit) &optional))
+        read-style-from-string))
+
+(locally
+ ;; Muffle style warning about
+ ;; &OPTINOAL and &KEY found in the same lambda list.
+ ;; We design API in a conservative fashion.
+ #+sbcl
+ (declare (sb-ext:muffle-conditions style-warning))
+ (defun read-style-from-string
+        (style-string &optional (eof-error-p t) eof-value &key (start 0) end)
+   (with-input-from-string (in style-string :start start :end end)
+     (let ((in (ensure-input-stream in)))
+       (values (read-style in eof-error-p eof-value)
+               (+ start (file-position in)))))))
 
 ;;;; READ-CSS
 
