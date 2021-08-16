@@ -527,12 +527,54 @@
         (make-bad-url-token :value string)
         (make-url-token :value string))))
 
-;;;; 4.3.4. Consume an ident-like token
-;;; https://www.w3.org/TR/css-syntax-3/#consume-ident-like-token
+;;;; 5.4.7. Consume a simple block
+;;; https://www.w3.org/TR/css-syntax-3/#consume-a-simple-block
+
+(declaim
+ (ftype (function ((or null character) css-input-stream)
+         (values list &optional))
+        consume-a-simple-block))
+
+(defun consume-a-simple-block (end-char input)
+  ;; Note: This algorithm assumes that the current input token has
+  ;; already been read open token e.g. #\( #\[ #\{.
+  ;; If end-char is `NIL`, do implicit list behavior.
+  (loop :for c = (peek-char t input nil nil)
+        :if (null c)
+          :do (signal 'end-of-css :stream input)
+              (loop-finish)
+        :else :if (eql end-char c)
+          :do (read-char input) ; discar end-char.
+              (loop-finish)
+        :else :if (char= #\, c)
+          :collect nil ; as null component.
+        :else
+          :collect (handler-case (read-style input t t t)
+                     (name-parse-error (condition)
+                       (if (find (parse-error-character condition) "=+-*/")
+                           (make-delim-token :value (string (read-char input)))
+                           (error condition))))
+          :and :do (let ((more? (peek-char t input nil nil)))
+                     (cond ((null more?) (loop-finish))
+                           ((char= #\, more?) (read-char input)) ; successfully
+                                                                 ; discard.
+                           ((null end-char) (loop-finish))))))
+
+;;;; 5.4.8. Consume a function
+;;; https://www.w3.org/TR/css-syntax-3/#ref-for-typedef-function-token%E2%91%A8
 
 (defstruct (function-token (:include css-token))
   (name (error "NAME is required.") :type string)
   (args (error "VALUE is required.") :type list))
+
+(defun consume-a-function
+       (name
+        &optional (input *standard-input*)
+        &aux (input (ensure-input-stream input)))
+  (make-function-token :name name :args (consume-a-simple-block #\) input)))
+
+;;;; 4.3.4. Consume an ident-like token
+;;; https://www.w3.org/TR/css-syntax-3/#consume-ident-like-token
 
 (declaim
  (ftype (function (&optional (or boolean stream))
@@ -605,48 +647,6 @@
     (if bad-string-p
         (make-bad-string-token :value contents)
         (make-string-token :value contents))))
-
-;;;; 5.4.7. Consume a simple block
-;;; https://www.w3.org/TR/css-syntax-3/#consume-a-simple-block
-
-(declaim
- (ftype (function ((or null character) css-input-stream)
-         (values list &optional))
-        consume-a-simple-block))
-
-(defun consume-a-simple-block (end-char input)
-  ;; Note: This algorithm assumes that the current input token has
-  ;; already been read open token e.g. #\( #\[ #\{.
-  ;; If end-char is `NIL`, do implicit list behavior.
-  (loop :for c = (peek-char t input nil nil)
-        :if (null c)
-          :do (signal 'end-of-css :stream input)
-              (loop-finish)
-        :else :if (eql end-char c)
-          :do (read-char input) ; discar end-char.
-              (loop-finish)
-        :else :if (char= #\, c)
-          :collect nil ; as null component.
-        :else
-          :collect (handler-case (read-style input t t t)
-                     (name-parse-error (condition)
-                       (if (find (parse-error-character condition) "=+-*/")
-                           (make-delim-token :value (string (read-char input)))
-                           (error condition))))
-          :and :do (let ((more? (peek-char t input nil nil)))
-                     (cond ((null more?) (loop-finish))
-                           ((char= #\, more?) (read-char input)) ; successfully
-                                                                 ; discard.
-                           ((null end-char) (loop-finish))))))
-
-;;;; 5.4.8. Consume a function
-;;; https://www.w3.org/TR/css-syntax-3/#ref-for-typedef-function-token%E2%91%A8
-
-(defun consume-a-function
-       (name
-        &optional (input *standard-input*)
-        &aux (input (ensure-input-stream input)))
-  (make-function-token :name name :args (consume-a-simple-block #\) input)))
 
 ;;;; 5.4.5. Consume a declaration
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-declaration
