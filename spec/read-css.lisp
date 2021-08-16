@@ -997,12 +997,15 @@
 		       :list `((,(read-css::make-number-token :value 0))))))))
 
 #?(with-input-from-string (in "p{ /*comment*/ }")
-    (read-style in))
-:satisfies
-(lambda (x)
+    (let ((in (read-css::ensure-input-stream in)))
+      (values (read-style in)
+	      (read-char in nil nil))))
+:multiple-value-satisfies
+(lambda (x c)
   (& (equalp x (read-css::make-qualified-rule
 		 :selectors '("p")
-		 :declarations nil))))
+		 :declarations nil))
+     (null c)))
 
 ; Missing last semi-colon is valid.
 #?(with-input-from-string (in ".txtSizeSS{ font-size:74%}")

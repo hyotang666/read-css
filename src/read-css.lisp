@@ -744,13 +744,12 @@
           :else
             :do (handler-case (consume-a-declaration input)
                   (name-parse-error (c)
-                    (if (eql #\} (parse-error-character c))
-                        (loop-finish)
-                        (progn
-                         (cerror "Ignore declaration." c)
-                         (warn "Discard ~S"
-                               (core-reader:read-string-till
-                                 (lambda (x) (find x ";}")) input)))))
+                    (unless (eql #\} (parse-error-character c))
+                      (progn
+                       (cerror "Ignore declaration." c)
+                       (warn "Discard ~S"
+                             (core-reader:read-string-till
+                               (lambda (x) (find x ";}")) input)))))
                   (:no-error (decl)
                     (acc decl)))
             :and :do (let ((next (peek-char t input nil nil)))
