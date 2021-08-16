@@ -603,14 +603,6 @@
         (make-bad-string-token :value contents)
         (make-string-token :value contents))))
 
-;;;; 5.4.6. Consume a component value
-;;; https://www.w3.org/TR/css-syntax-3/#consume-component-value
-
-(defun consume-a-component-value
-       (&optional (input *standard-input*)
-        &aux (input (ensure-input-stream input)))
-  (read-style input nil 'end-of-file t))
-
 ;;;; 5.4.7. Consume a simple block
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-a-simple-block
 
@@ -633,7 +625,11 @@
         :else :if (char= #\, c)
           :collect nil ; as null component.
         :else
-          :collect (consume-a-component-value input)
+          :collect (handler-case (read-style input t t t)
+                     (name-parse-error (condition)
+                       (if (find (parse-error-character condition) "+")
+                           (make-delim-token :value (string (read-char input)))
+                           (error condition))))
           :and :do (let ((more? (peek-char t input nil nil)))
                      (cond ((null more?) (loop-finish))
                            ((char= #\, more?) (read-char input)) ; successfully
@@ -663,31 +659,40 @@
 
 (defun consume-components (end-chars input)
   ;; NOTE: END-CHAR is not consumed.
-  (loop :for c := (peek-char t input nil nil)
-        :if (null c)
-          :do (signal 'end-of-css :stream input)
-              (loop-finish)
-        :else :if (find c end-chars)
-          :do (loop-finish)
-        :else :if (char= #\, c)
-          :collect nil ; as null component.
-        :else
-          :collect (loop :for c = (peek-char t input nil nil)
-                         :if (null c)
-                           :do (signal 'end-of-css :stream input)
-                               (loop-finish)
-                         :else :if (or (char= #\, c) (find c end-chars))
-                           :do (loop-finish)
-                         :else
-                           :collect (consume-a-component-value input))
-          :and :do (let ((c (peek-char t input nil nil)))
-                     (cond
-                       ((null c)
-                        (signal 'end-of-css :stream input)
-                        (loop-finish))
-                       ((find c end-chars) (loop-finish))
-                       ((char= #\, c) (read-char input)) ; discard.
-                       (t nil)))))
+  (labels ((style ()
+             (handler-case (read-style input t t t)
+               (name-parse-error (condition)
+                 (let ((c (parse-error-character condition)))
+                   (if (find c "+")
+                       (make-delim-token :value (string (read-char input)))
+                       (error condition))))))
+           (decls ()
+             (loop :for c = (peek-char t input nil nil)
+                   :if (null c)
+                     :do (signal 'end-of-css :stream input)
+                         (loop-finish)
+                   :else :if (or (char= #\, c) (find c end-chars))
+                     :do (loop-finish)
+                   :else
+                     :collect (style))))
+    (loop :for c := (peek-char t input nil nil)
+          :if (null c)
+            :do (signal 'end-of-css :stream input)
+                (loop-finish)
+          :else :if (find c end-chars)
+            :do (loop-finish)
+          :else :if (char= #\, c)
+            :collect nil ; as null component.
+          :else
+            :collect (decls)
+            :and :do (let ((c (peek-char t input nil nil)))
+                       (cond
+                         ((null c)
+                          (signal 'end-of-css :stream input)
+                          (loop-finish))
+                         ((find c end-chars) (loop-finish))
+                         ((char= #\, c) (read-char input)) ; discard.
+                         (t nil))))))
 
 (defstruct (important-token (:include css-token)))
 

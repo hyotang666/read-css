@@ -674,6 +674,21 @@
 	     fun-token)
      (eql #\a char)))
 
+#?(with-input-from-string (in "100% + 7px);}")
+    (let ((in (read-css::ensure-input-stream in)))
+      (values (consume-a-function "calc" in)
+	      (read-char in))))
+:multiple-value-satisfies
+(lambda (token char)
+  (& (equalp token
+	     (read-css::make-function-token
+	       :name "calc"
+	       :args (list (read-css::make-percentage-token :value 100)
+			   (read-css::make-delim-token :value "+")
+			   (read-css::make-dimension-token :value 7
+							   :unit "px"))))
+     (eql char #\;)))
+
 (requirements-about |#rgb-reader| :doc-type function)
 
 ;;;; Description:
@@ -1006,6 +1021,30 @@
     (read-style in t t t))
 :signals parse-error ; duplicated colon.
 ,:with-restarts continue
+
+#?(with-input-from-string (in "{filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#b3b3b3',GradientType=0 ); }")
+    (handler-bind ((parse-error #'continue))
+      (values (read-style in t t t)
+	      (read-char in nil nil))))
+:values (nil nil)
+,:ignore-signals warning
+
+#?(with-input-from-string (in "{top: calc(100% + 7px);}")
+    (read-style in t t t))
+:satisfies
+(lambda (x)
+  (& (equalp x
+	     (list (read-css::make-css-declaration
+		     :name "top"
+		     :list `((,(read-css::make-function-token
+				 :name "calc"
+				 :args (list (read-css::make-percentage-token
+					       :value 100)
+					     (read-css::make-delim-token
+					       :value "+")
+					     (read-css::make-dimension-token
+					       :value 7
+					       :unit "px"))))))))))
 
 (requirements-about READ-CSS :doc-type function)
 
