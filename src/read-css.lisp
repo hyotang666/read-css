@@ -602,7 +602,7 @@
 (defun consume-a-component-value
        (&optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
-  (read-style input nil 'end-of-file))
+  (read-style input nil 'end-of-file t))
 
 ;;;; 5.4.7. Consume a simple block
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-a-simple-block
@@ -690,7 +690,7 @@
 (defun consume-a-declaration
        (&optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
-  (let ((name (read-style input))
+  (let ((name (read-style input t t t))
         (colon? (peek-char t input nil nil))
         important?)
     (if (not (eql #\: colon?))
@@ -717,7 +717,7 @@
           :do (read-char input)
               (loop-finish)
         :else :if (char= #\@ c)
-          :collect (read-style input)
+          :collect (read-style input t t t)
         :else
           :collect (consume-a-declaration input)
           :and :do (let ((next (peek-char t input nil nil)))
@@ -757,9 +757,7 @@
 
 (defun |{-reader| (input open-paren)
   (declare (ignore open-paren))
-  (let ((*readtable* (copy-readtable)))
-    (set-macro-character #\# '|#rgb-reader|)
-    (consume-a-list-of-declarations input)))
+  (consume-a-list-of-declarations input))
 
 (declaim
  (ftype (function (stream character) (values cl-colors2:rgb &optional))
@@ -836,7 +834,7 @@
      (let ((selectors (consume-selectors input character)))
        (if (char= #\{ (peek-char t input nil #\Nul))
            (make-qualified-rule :selectors selectors
-                                :declarations (read-style input))
+                                :declarations (read-style input t t t))
            (error 'simple-parse-error
                   :format-control "Unknown syntax: Selectors follows ~S"
                   :format-arguments (list
@@ -885,7 +883,7 @@
            (let ((selectors (consume-selectors input character)))
              (if (char= #\{ (peek-char t input nil #\Nul))
                  (make-qualified-rule :selectors selectors
-                                      :declarations (read-style input))
+                                      :declarations (read-style input t t t))
                  (error 'simple-parse-error
                         :format-control "Unknown syntax: Selectors follows ~S"
                         :format-arguments (list
@@ -965,49 +963,65 @@
  |#
 
 (named-readtables:defreadtable css-readtable
-  (:macro-char #\/ '|/-reader|)
-  (:macro-char #\! '|!-reader|)
+  (:macro-char #\/ '|/-reader|) ; for comment.
+  (:macro-char #\< '|<-reader|) ; for cdc
+  (:macro-char #\@ '|@-reader|))
+
+(named-readtables:defreadtable css-non-toplevel
+  (:macro-char #\/ '|/-reader|) ; for comment.
   (:macro-char #\" '|"-reader|)
   (:macro-char #\' '|"-reader|)
-  (:macro-char #\# '|#-reader|)
-  (:macro-char #\+ '|+-reader| t)
-  (:macro-char #\- '|--reader| t)
-  (:macro-char #\. '|.-reader| t)
-  (:macro-char #\< '|<-reader|)
-  (:macro-char #\@ '|@-reader|)
-  (:macro-char #\( '|(-reader|)
-  (:macro-char #\) (get-macro-character #\)))
-  (:macro-char #\[ '|[-reader|)
-  (:macro-char #\] (get-macro-character #\)))
   (:macro-char #\{ '|{-reader|)
-  (:macro-char #\} (get-macro-character #\))))
+  (:macro-char #\# '|#rgb-reader|))
 
 ;;;; READ-CSS
 
+(declaim
+ (ftype (function (&optional (or boolean stream) boolean t boolean)
+         (values t &optional))
+        read-style))
+
 (defun read-style
        (&optional (input *standard-input*) (eof-error-p t) eof-value
+        recursive-p
         &aux (input (ensure-input-stream input)))
-  (handler-case (peek-char t input) ; to discard white spaces.
-    (end-of-file (c)
-      (if eof-error-p
-          (error c)
-          eof-value))
-    (:no-error (char)
-      (multiple-value-bind (reader-macro non-terminating-p)
-          (get-macro-character char)
-        (declare (ignore non-terminating-p))
-        (cond
-          (reader-macro
-           (multiple-value-call
-               (lambda (&rest values)
-                 (if values
-                     (values-list values)
-                     (read-style input eof-error-p eof-value)))
-             (funcall (coerce reader-macro 'function) input
-                      (read-char input #| actually read |#))))
-          ((or (find char "+-") (digit-char-p char 10))
-           (consume-a-numeric-token input))
-          (t (consume-an-ident-like-token input)))))))
+  "Read one css style from specified input."
+  (let ((*readtable*
+         (named-readtables:find-readtable
+           (if recursive-p
+               'css-non-toplevel
+               'css-readtable))))
+    (handler-case (peek-char t input) ; to discard white spaces.
+      (end-of-file (c)
+        (if eof-error-p
+            (error c)
+            eof-value))
+      (:no-error (char)
+        (multiple-value-bind (reader-macro non-terminating-p)
+            (get-macro-character char)
+          (declare (ignore non-terminating-p))
+          (cond
+            (reader-macro
+             (multiple-value-call
+                 (lambda (&rest values)
+                   (if values
+                       (values-list values)
+                       (read-style input eof-error-p eof-value recursive-p)))
+               (funcall (coerce reader-macro 'function) input
+                        (read-char input #| actually read |#))))
+            (recursive-p
+             (if (start-a-number-p input)
+                 (consume-a-numeric-token input)
+                 (consume-an-ident-like-token input)))
+            ((or (find char ".#") (start-an-identifier-p input))
+             (let ((selectors (consume-selectors input (read-char input))))
+               (if (char= #\{ (peek-char t input nil #\Nul))
+                   (make-qualified-rule :selectors selectors
+                                        :declarations (read-style input t t t))
+                   (error 'simple-parse-error
+                          :format-control "Missing declarations after ~S."
+                          :format-arguments (list selectors)))))
+            (t (internal-logical-error "NIY"))))))))
 
 (declaim
  (ftype (function (&optional (or boolean stream))
@@ -1019,9 +1033,9 @@
   (defun read-css
          (&optional (input *standard-input*)
           &aux (input (ensure-input-stream input)))
-    (let ((*readtable* (named-readtables:find-readtable 'css-readtable)))
-      (loop :for style = (read-style input nil end-of-file)
-            :if (eq style end-of-file)
-              :do (loop-finish)
-            :else
-              :collect style))))
+    "Read all style rules from specified stream."
+    (loop :for style = (read-style input nil end-of-file)
+          :if (eq style end-of-file)
+            :do (loop-finish)
+          :else
+            :collect style)))

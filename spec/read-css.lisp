@@ -4,7 +4,8 @@
 		#:consume-a-name #:consume-an-ident-like-token #:consume-a-url-token
 		#:consume-an-escaped-code-point #:consume-a-string-token
 		#:consume-a-function #:start-an-identifier-p #:consume-a-simple-block
-		#:|{-reader| #:|#rgb-reader| #:consume-selectors #:consume-comments))
+		#:|{-reader| #:|#rgb-reader| #:consume-selectors #:consume-comments
+		#:read-style))
 (in-package :read-css.spec)
 (setup :read-css)
 
@@ -739,6 +740,233 @@
 	     list)
      (eql char #\a)))
 
+(requirements-about READ-STYLE :doc-type function)
+
+;;;; Description:
+; Read one css style from specified input.
+
+#+syntax (READ-STYLE &optional
+           (input *standard-input*)
+           (eof-error-p t)
+           eof-value
+           recursive-p)
+; => result
+
+;;;; Arguments and Values:
+
+; input := (or boolean stream), otherwise implementation dependent condition.
+#?(read-style "not stream-designator") :signals condition
+
+; eof-error-p := boolean
+; If true (the default), signals end-of-file when get end of file.
+#?(with-input-from-string (in "")
+    (read-style in))
+:signals end-of-file
+
+; If NIL, end-of-file is not signaled.
+#?(with-input-from-string (in "") (read-style in nil)) :invokes-debugger not
+
+; eof-value := t
+; If EOF-ERROR-P is NIL and get end-of-file, this value is returned.
+#?(with-input-from-string (in "") (read-style in nil :this-is-returned))
+=> :THIS-IS-RETURNED
+
+; recursive-p := boolean
+; Internal use for controling readtable.
+; e.g. '#' is used for id tag in toplevel but
+; color code in non toplevel.
+
+#?(with-input-from-string (in "0")
+    (read-style in))
+:signals error
+
+; result := t
+
+;;;; Affected By:
+
+;;;; Side-Effects:
+; Consume stream contents.
+
+;;;; Notes:
+
+;;;; Exceptional-Situations:
+
+;;;; Tests:
+;;; Comment.
+#?(with-input-from-string (in "/* comment */")
+    (read-style in))
+:signals end-of-file
+
+; (Unfortunately) nested comment is disabled.
+#?(with-input-from-string (in "/* nested /* comment */ is disabled */")
+    (read-style in t t t))
+=> "is"
+,:test equal
+
+;;; Numbers
+; Integer
+#?(with-input-from-string (in "0")
+    (read-style in t t t))
+:satisfies (lambda (x) (equalp x (read-css::make-number-token :value 0)))
+
+; Signed integer.
+#?(with-input-from-string (in "+1")
+    (read-style in t t t))
+:satisfies (lambda (x) (equalp x (read-css::make-number-token :value 1)))
+
+#?(with-input-from-string (in "-1")
+    (read-style in t t t))
+:satisfies (lambda (x) (equalp x (read-css::make-number-token :value -1)))
+
+; Float.
+#?(with-input-from-string (in "0.5")
+    (read-style in t t t))
+:satisfies (lambda (x) (equalp x (read-css::make-number-token :value 0.5)))
+
+; Signed float.
+#?(with-input-from-string (in "+0.5 -0.5")
+    (values (read-style in t t t)
+	    (read-style in t t t)))
+:multiple-value-satisfies
+(lambda (a b)
+  (& (equalp a (read-css::make-number-token :value 0.5))
+     (equalp b (read-css::make-number-token :value -0.5))))
+
+; Starts with dot.
+#?(with-input-from-string (in ".5 +.5 -.5")
+    (values (read-style in t t t)
+	    (read-style in t t t)
+	    (read-style in t t t)))
+:multiple-value-satisfies
+(lambda (a b c)
+  (& (equalp a (read-css::make-number-token :value 0.5))
+     (equalp b (read-css::make-number-token :value 0.5))
+     (equalp c (read-css::make-number-token :value -0.5))))
+
+; Exponential.
+#?(with-input-from-string (in "0.5e-3 0.5E-3 +0.5e-3 -0.5E-3 .5e3 .5E3")
+    (loop :repeat 6
+	  :collect (read-style in t t t)))
+:satisfies (lambda (x) (equalp x (list (read-css::make-number-token :value 0.5e-3)
+				       (read-css::make-number-token :value 0.5e-3)
+				       (read-css::make-number-token :value 0.5e-3)
+				       (read-css::make-number-token :value -0.5e-3)
+				       (read-css::make-number-token :value .5e3)
+				       (read-css::make-number-token :value .5e3))))
+
+; Missing declarations.
+#?(with-input-from-string (in ".jishin")
+    (read-style in))
+:signals parse-error
+
+; Syntax error as property name.
+#?(with-input-from-string (in ".jishin")
+    (read-style in t t t))
+:signals parse-error
+
+#?(with-input-from-string (in ".jishin{}")
+    (read-style in))
+:satisfies (lambda (result)
+	     (equalp result (read-css::make-qualified-rule
+			      :selectors '(".jishin")
+			      :declarations ())))
+
+#?(with-input-from-string (in ".jishin {background:hsla(0,0%,95%,1.00); height:65px; padding-top:6px;}")
+    (read-style in))
+:satisfies
+(lambda (result)
+  (& (equalp result
+	     (read-css::make-qualified-rule
+	       :selectors '(".jishin")
+	       :declarations
+	       (list (read-css::make-css-declaration
+		       :name "background"
+		       :list
+		       (list (list (read-css::make-function-token
+				     :name "hsla"
+				     :args (list (read-css::make-number-token :value 0)
+						 (read-css::make-percentage-token :value 0)
+						 (read-css::make-percentage-token :value 95)
+						 (read-css::make-number-token :value 1.0))))))
+		     (read-css::make-css-declaration
+		       :name "height"
+		       :list (list (list (read-css::make-dimension-token :value 65 :type nil :unit "px"))))
+		     (read-css::make-css-declaration
+		       :name "padding-top"
+		       :list (list (list (read-css::make-dimension-token :value 6 :type nil :unit "px")))))))))
+
+#?(with-input-from-string (in ".commentBox{ border: 1px solid #CCC; padding: 15px 153px;}")
+    (read-style in))
+:satisfies (lambda (result)
+	     (& (equalp result
+			(read-css::make-qualified-rule
+			  :selectors '(".commentBox")
+			  :declarations
+			  (list (read-css::make-css-declaration
+				  :name "border"
+				  :list (list (list (read-css::make-dimension-token
+						      :value 1 :type nil :unit "px")
+						    "solid"
+						    (cl-colors2:rgb 0.8 0.8 0.8))))
+				(read-css::make-css-declaration
+				  :name "padding"
+				  :list (list (list (read-css::make-dimension-token
+						      :value 15 :type nil :unit "px")
+						    (read-css::make-dimension-token
+						      :value 153 :type nil :unit "px")))))))))
+
+#?(with-input-from-string (in "{ background: #ffffe2; border-radius:10px;}")
+    (read-style in t t t))
+:satisfies (lambda (x)
+	     (& (equalp x `(,(read-css::make-css-declaration
+			       :name "background"
+			       :list `((,(cl-colors2:rgb 1.0 1.0 0.8862745))))
+			     ,(read-css::make-css-declaration
+				:name "border-radius"
+				:list `((,(read-css::make-dimension-token
+					    :value 10
+					    :type nil
+					    :unit "px"))))))))
+
+#?(with-input-from-string (in "{background-size: 200px auto, 44px 76px;}")
+    (read-style in t t t))
+:satisfies (lambda (x)
+	     (& (equalp x
+			`(,(read-css::make-css-declaration
+			     :name "background-size"
+			     :list `((,(read-css::make-dimension-token
+					 :value 200
+					 :unit "px")
+				       ,"auto")
+				     (,(read-css::make-dimension-token
+					 :value 44
+					 :unit "px")
+				       ,(read-css::make-dimension-token
+					  :value 76
+					  :unit "px"))))))))
+
+#?(with-input-from-string (in "{/* overflow:auto; */height:250px;position:relative;}")
+    (read-style in t t t))
+:satisfies (lambda (x)
+	     (& (equalp x
+			`(,(read-css::make-css-declaration
+			     :name "height"
+			     :list `((,(read-css::make-dimension-token
+					 :value 250
+					 :unit "px"))))
+			   ,(read-css::make-css-declaration
+			      :name "position"
+			      :list `(("relative")))))))
+
+#?(with-input-from-string (in "{ font-size:87.5%; }")
+    (read-style in t t t))
+:satisfies (lambda (x)
+	     (& (equalp x
+			(list (read-css::make-css-declaration
+				:name "font-size"
+				:list `((,(read-css::make-percentage-token
+					    :value 87.5))))))))
+
 (requirements-about READ-CSS :doc-type function)
 
 ;;;; Description:
@@ -762,158 +990,3 @@
 ;;;; Exceptional-Situations:
 
 ;;;; Examples:
-;;; Comment.
-#?(with-input-from-string (in "/* comment */")
-    (read-css in))
-=> NIL
-
-; (Unfortunately) nested comment is disabled.
-#?(with-input-from-string (in "/* nested /* comment */ is disabled */")
-    (read-css in))
-:signals read-css::css-parse-error
-
-;;; Numbers
-; Integer
-#?(with-input-from-string (in "0")
-    (read-css in))
-:satisfies (lambda (x) (equalp x (list (read-css::make-number-token :value 0))))
-
-; Signed integer.
-#?(with-input-from-string (in "+1")
-    (read-css in))
-:satisfies (lambda (x) (equalp x (list (read-css::make-number-token :value 1))))
-
-#?(with-input-from-string (in "-1")
-    (read-css in))
-:satisfies (lambda (x) (equalp x (list (read-css::make-number-token :value -1))))
-
-#?(with-input-from-string (in "+1 -1")
-    (read-css in))
-:satisfies (lambda (x) (equalp x (list (read-css::make-number-token :value 1)
-				       (read-css::make-number-token :value -1))))
-
-; Float.
-#?(with-input-from-string (in "0.5")
-    (read-css in))
-:satisfies (lambda (x) (equalp x (list (read-css::make-number-token :value 0.5))))
-
-; Signed float.
-#?(with-input-from-string (in "+0.5 -0.5")
-    (read-css in))
-:satisfies (lambda (x) (equalp x (list (read-css::make-number-token :value 0.5)
-				       (read-css::make-number-token :value -0.5))))
-
-; Starts with dot.
-#?(with-input-from-string (in ".5 +.5 -.5")
-    (read-css in))
-:satisfies (lambda (x) (equalp x (list (read-css::make-number-token :value 0.5)
-				       (read-css::make-number-token :value 0.5)
-				       (read-css::make-number-token :value -0.5))))
-
-; Exponential.
-#?(with-input-from-string (in "0.5e-3 0.5E-3 +0.5e-3 -0.5E-3 .5e3 .5E3")
-    (read-css in))
-:satisfies (lambda (x) (equalp x (list (read-css::make-number-token :value 0.5e-3)
-				       (read-css::make-number-token :value 0.5e-3)
-				       (read-css::make-number-token :value 0.5e-3)
-				       (read-css::make-number-token :value -0.5e-3)
-				       (read-css::make-number-token :value .5e3)
-				       (read-css::make-number-token :value .5e3))))
-
-#?(with-input-from-string (in ".jishin")
-    (read-css in))
-:signals parse-error
-
-#?(with-input-from-string (in ".jishin{}")
-    (read-css in))
-:satisfies (lambda (result)
-	     (equalp result (list (read-css::make-qualified-rule
-				    :selectors '(".jishin")
-				    :declarations ()))))
-
-#?(with-input-from-string (in ".jishin {background:hsla(0,0%,95%,1.00); height:65px; padding-top:6px;}")
-    (read-css in))
-:satisfies
-(lambda (result)
-  (& (equalp result
-	     (list (read-css::make-qualified-rule
-		     :selectors '(".jishin")
-		     :declarations
-		     (list (read-css::make-css-declaration
-			     :name "background"
-			     :list
-			     (list (list (read-css::make-function-token
-					   :name "hsla"
-					   :args (list (read-css::make-number-token :value 0)
-						       (read-css::make-percentage-token :value 0)
-						       (read-css::make-percentage-token :value 95)
-						       (read-css::make-number-token :value 1.0))))))
-			   (read-css::make-css-declaration
-			     :name "height"
-			     :list (list (list (read-css::make-dimension-token :value 65 :type nil :unit "px"))))
-			   (read-css::make-css-declaration
-			     :name "padding-top"
-			     :list (list (list (read-css::make-dimension-token :value 6 :type nil :unit "px"))))))))))
-
-#?(with-input-from-string (in ".commentBox{ border: 1px solid #CCC; padding: 15px 153px;}")
-    (read-css in))
-:satisfies (lambda (result)
-	     (& (equalp result
-			(list (read-css::make-qualified-rule
-				:selectors '(".commentBox")
-				:declarations
-				(list (read-css::make-css-declaration
-					:name "border"
-					:list (list (list (read-css::make-dimension-token
-							    :value 1 :type nil :unit "px")
-							  "solid"
-							  (cl-colors2:rgb 0.8 0.8 0.8))))
-				      (read-css::make-css-declaration
-					:name "padding"
-					:list (list (list (read-css::make-dimension-token
-							    :value 15 :type nil :unit "px")
-							  (read-css::make-dimension-token
-							    :value 153 :type nil :unit "px"))))))))))
-
-#?(with-input-from-string (in "{ background: #ffffe2; border-radius:10px;}")
-    (read-css in))
-:satisfies (lambda (x)
-	     (& (equalp x `((,(read-css::make-css-declaration
-				:name "background"
-				:list `((,(cl-colors2:rgb 1.0 1.0 0.8862745))))
-			      ,(read-css::make-css-declaration
-				 :name "border-radius"
-				 :list `((,(read-css::make-dimension-token
-					     :value 10
-					     :type nil
-					     :unit "px")))))))))
-
-#?(with-input-from-string (in "{background-size: 200px auto, 44px 76px;}")
-    (read-css in))
-:satisfies (lambda (x)
-	     (& (equalp x
-			`((,(read-css::make-css-declaration
-			      :name "background-size"
-			      :list `((,(read-css::make-dimension-token
-					  :value 200
-					  :unit "px")
-					,"auto")
-				      (,(read-css::make-dimension-token
-					  :value 44
-					  :unit "px")
-				       ,(read-css::make-dimension-token
-					  :value 76
-					  :unit "px")))))))))
-
-#?(with-input-from-string (in "{/* overflow:auto; */height:250px;position:relative;}")
-    (read-css in))
-:satisfies (lambda (x)
-	     (& (equalp x
-			`((,(read-css::make-css-declaration
-			      :name "height"
-			      :list `((,(read-css::make-dimension-token
-					  :value 250
-					  :unit "px"))))
-			    ,(read-css::make-css-declaration
-			       :name "position"
-			       :list `(("relative"))))))))
