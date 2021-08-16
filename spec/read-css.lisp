@@ -751,7 +751,7 @@
 (lambda (list char)
   (& (equalp (list (read-css::make-css-declaration
 		     :name "padding-top"
-		     :list (list (list (read-css::make-dimension-token :value 6 :type nil :unit "px")))))
+		     :list (list (list (read-css::make-dimension-token :value 6 :unit "px")))))
 	     list)
      (eql char #\a)))
 
@@ -910,10 +910,10 @@
 						 (read-css::make-number-token :value 1.0))))))
 		     (read-css::make-css-declaration
 		       :name "height"
-		       :list (list (list (read-css::make-dimension-token :value 65 :type nil :unit "px"))))
+		       :list (list (list (read-css::make-dimension-token :value 65 :unit "px"))))
 		     (read-css::make-css-declaration
 		       :name "padding-top"
-		       :list (list (list (read-css::make-dimension-token :value 6 :type nil :unit "px")))))))))
+		       :list (list (list (read-css::make-dimension-token :value 6 :unit "px")))))))))
 
 #?(with-input-from-string (in ".commentBox{ border: 1px solid #CCC; padding: 15px 153px;}")
     (read-style in))
@@ -925,15 +925,15 @@
 			  (list (read-css::make-css-declaration
 				  :name "border"
 				  :list (list (list (read-css::make-dimension-token
-						      :value 1 :type nil :unit "px")
+						      :value 1 :unit "px")
 						    "solid"
 						    (cl-colors2:rgb 0.8 0.8 0.8))))
 				(read-css::make-css-declaration
 				  :name "padding"
 				  :list (list (list (read-css::make-dimension-token
-						      :value 15 :type nil :unit "px")
+						      :value 15 :unit "px")
 						    (read-css::make-dimension-token
-						      :value 153 :type nil :unit "px")))))))))
+						      :value 153 :unit "px")))))))))
 
 #?(with-input-from-string (in "{ background: #ffffe2; border-radius:10px;}")
     (read-style in t t t))
@@ -945,7 +945,6 @@
 				:name "border-radius"
 				:list `((,(read-css::make-dimension-token
 					    :value 10
-					    :type nil
 					    :unit "px"))))))))
 
 #?(with-input-from-string (in "{background-size: 200px auto, 44px 76px;}")
