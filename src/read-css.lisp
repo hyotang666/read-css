@@ -730,7 +730,9 @@
         :else :if (char= #\@ c)
           :collect (read-style input t t t)
         :else
-          :collect (consume-a-declaration input)
+          :collect (handler-case (consume-a-declaration input)
+                     (parse-error ()
+                       (loop-finish)))
           :and :do (let ((next (peek-char t input nil nil)))
                      (cond ((null next) (signal 'end-of-css :stream input))
                            ((char= #\; next) (read-char input)) ; discard.

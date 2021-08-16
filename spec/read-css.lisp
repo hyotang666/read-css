@@ -864,6 +864,11 @@
     (read-style in t t t))
 :signals parse-error
 
+#?(with-input-from-string (in "jishin")
+    (read-style in t t t))
+=> "jishin"
+,:test equal
+
 #?(with-input-from-string (in ".jishin{}")
     (read-style in))
 :satisfies (lambda (result)
@@ -975,6 +980,14 @@
 		       :name "opacity"
 		       :importantp t
 		       :list `((,(read-css::make-number-token :value 0))))))))
+
+#?(with-input-from-string (in "p{ /*comment*/ }")
+    (read-style in))
+:satisfies
+(lambda (x)
+  (& (equalp x (read-css::make-qualified-rule
+		 :selectors '("p")
+		 :declarations nil))))
 
 (requirements-about READ-CSS :doc-type function)
 
