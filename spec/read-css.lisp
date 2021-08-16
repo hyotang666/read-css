@@ -989,6 +989,19 @@
 		 :selectors '("p")
 		 :declarations nil))))
 
+; Missing last semi-colon is valid.
+#?(with-input-from-string (in ".txtSizeSS{ font-size:74%}")
+    (read-style in))
+:satisfies
+(lambda (x)
+  (& (equalp x (read-css::make-qualified-rule
+		 :selectors '(".txtSizeSS")
+		 :declarations (list (read-css::make-css-declaration
+				       :name "font-size"
+				       :importantp nil
+				       :list (list (list (read-css::make-percentage-token
+							   :value 74)))))))))
+
 (requirements-about READ-CSS :doc-type function)
 
 ;;;; Description:

@@ -652,16 +652,16 @@
   (list nil :type list))
 
 (declaim
- (ftype (function (character css-input-stream) (values list &optional))
+ (ftype (function (sequence css-input-stream) (values list &optional))
         consume-components))
 
-(defun consume-components (end-char input)
+(defun consume-components (end-chars input)
   ;; NOTE: END-CHAR is not consumed.
   (loop :for c := (peek-char t input nil nil)
         :if (null c)
           :do (signal 'end-of-css :stream input)
               (loop-finish)
-        :else :if (char= end-char c)
+        :else :if (find c end-chars)
           :do (loop-finish)
         :else :if (char= #\, c)
           :collect nil ; as null component.
@@ -670,7 +670,7 @@
                          :if (null c)
                            :do (signal 'end-of-css :stream input)
                                (loop-finish)
-                         :else :if (or (char= #\, c) (char= end-char c))
+                         :else :if (or (char= #\, c) (find c end-chars))
                            :do (loop-finish)
                          :else
                            :collect (consume-a-component-value input))
@@ -679,7 +679,7 @@
                        ((null c)
                         (signal 'end-of-css :stream input)
                         (loop-finish))
-                       ((char= end-char c) (loop-finish))
+                       ((find c end-chars) (loop-finish))
                        ((char= #\, c) (read-char input)) ; discard.
                        (t nil)))))
 
@@ -711,7 +711,7 @@
                                           decls))
                                       (progn
                                        (read-char input) ; discard colon.
-                                       (consume-components #\; input)))
+                                       (consume-components ";}" input)))
                               :importantp important?))))
 
 ;;;; 5.4.4. Consume a list of declarations
