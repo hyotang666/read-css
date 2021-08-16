@@ -627,7 +627,7 @@
         :else
           :collect (handler-case (read-style input t t t)
                      (name-parse-error (condition)
-                       (if (find (parse-error-character condition) "+")
+                       (if (find (parse-error-character condition) "=+-*/")
                            (make-delim-token :value (string (read-char input)))
                            (error condition))))
           :and :do (let ((more? (peek-char t input nil nil)))
