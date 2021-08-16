@@ -928,7 +928,7 @@
   (:macro-char #\# '|#rgb-reader|)
   (:macro-char #\! '|!-reader|))
 
-;;;; READ-CSS
+;;;; READ-STYLE
 
 (declaim
  (ftype (function (&optional (or boolean stream) boolean t boolean)
@@ -976,6 +976,8 @@
                           :format-control "Missing declarations after ~S."
                           :format-arguments (list selectors)))))
             (t (internal-logical-error "NIY ~S" char))))))))
+
+;;;; READ-CSS
 
 (declaim
  (ftype (function (&optional (or boolean stream))
