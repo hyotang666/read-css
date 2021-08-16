@@ -2,7 +2,83 @@
 
 (defpackage :read-css
   (:use :cl)
-  (:export))
+  #| Main API for light users. |#
+  (:export #:read-css #:read-style #:read-style-from-string)
+  #| API for heavy users. |#
+  (:export ;;;; Conditions.
+           #:css-parse-error
+           #:end-of-css
+           #:invalid-escape
+           #:simple-parse-error
+           #:name-parse-error
+           ;; Slot reader.
+           #:parse-error-character)
+  (:export ;;;; Style rules.
+           ;;; QUALIFIED-RULE
+           #:qualified-rule ; type name.
+           ;; accessors.
+           #:qualified-rule-selectors
+           #:qualified-rule-declarations
+           ;;; AT-RULE
+           #:at-rule
+           ;; accessors
+           #:at-rule-name
+           #:at-rule-components
+           #:at-rule-block)
+  (:export ;;;; CSS-DECLARATION
+           #:css-declaration ; type name.
+           ;; Slot accessors.
+           #:css-declaration-name
+           #:css-declaration-importantp
+           #:css-declaration-list)
+  (:export ;;;; Tokens.
+           #:css-token ; as super-class
+           #:string-token
+           #:bad-string-token
+           #:number-token
+           #:percentage-token
+           #:dimension-token
+           #:url-token
+           #:bad-url-token
+           #:function-token
+           #:important-token
+           #:delim-token
+           #:at-keyword-token
+           ;; Slot accessors.
+           #:string-token-value
+           #:number-token-value
+           #:dimension-token-unit
+           #:function-token-name
+           #:function-token-args)
+  (:export ;;;; READTABLE-NAME
+           #:css-readtable)
+  #| API for hackers. |#
+  (:export ;;;; CONSUMERS.
+           #:consume-a-declaration
+           #:consume-a-function
+           #:consume-a-list-of-declarations
+           #:comsume-a-name
+           #:consume-a-number
+           #:consume-a-numric-token
+           #:consume-a-simple-block
+           #:consume-a-string-token
+           #:consume-a-url-token
+           #:consume-an-escaped-code-point
+           #:consume-an-ident-like-token
+           #:consume-comments
+           #:consume-components
+           #:consume-selectors
+           #:consume-the-remnants-of-a-bad-url)
+  (:export ;;;; Predicates.
+           #:non-ascii-code-point-p
+           #:name-start-code-point-p
+           #:name-code-point-p
+           #:non-printable-code-point-p
+           #:white-space-p
+           #:surrogatep
+           #:valid-escape-p
+           #:start-a-number-p
+           #:start-an-identifier-p))
 
 (in-package :read-css)
 

@@ -2,7 +2,7 @@
 (in-package :asdf)
 (defsystem "read-css"
   :version
-  "0.46.0"
+  "1.0.0"
   :depends-on
   (
    "named-readtables"   ; Readtable manager.
@@ -14,7 +14,12 @@
   :pathname
   "src/"
   :components
-  ((:file "read-css")))
+  ((:file "read-css"))
+  :author "SATO Shinichi"
+  :license "MIT"
+  :source-control (:git "git@github.com:hyotang666/read-css")
+  :bug-tracker "https://github.com/hyotang666/read-css/issues"
+  :description "CSS Reader.")
 
 ;;; These forms below are added by JINGOH.GENERATOR.
 ;; Ensure in ASDF for pretty printings.
