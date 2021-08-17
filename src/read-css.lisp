@@ -169,6 +169,17 @@
                        (unread-char char input)))))))
     (rec 0)))
 
+(defun consume-till (string input)
+  (let* ((head (cons :head nil)) (tail head))
+    (dotimes (x (the (integer 2 #.array-total-size-limit) (length string)))
+      (rplacd tail (setf tail (list (read-char input)))))
+    (loop (if (every #'char= string (print (cdr head)))
+              (return t)
+              (setf (cadr head) (read-char input)
+                    (cdr tail) (cdr head)
+                    (cdr head) (cddr head)
+                    tail (rplacd (cdr tail) nil))))))
+
 (defun remove-if-find
        (function list &aux (function (coerce function 'function)))
   (let* ((head (cons :head nil)) (tail head) (found?))
@@ -923,15 +934,11 @@
                    (trim-whitespaces (consume-selector (constantly nil)))))))
       (cdr selectors))))
 
-(defstruct (cdc-token (:include css-token)))
-
-(defstruct (cdo-token (:include css-token)))
-
 (defun |<-reader| (input character)
   (if (stream-start-with "!--" input)
       (progn
        (dotimes (x 3) (read-char input)) ; discard !--.
-       (make-cdo-token))
+       (consume-till "-->" input))
       (make-delim-token :value (string character))))
 
 (defstruct at-rule
