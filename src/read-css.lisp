@@ -899,20 +899,29 @@
         consume-selectors))
 
 (defun consume-selectors (input first-char)
-  (uiop:while-collecting (acc)
-    (acc
-     (string-right-trim +white-spaces+
-                        (uiop:strcat first-char
-                                     (core-reader:read-string-till
-                                       (lambda (c) (find c ",{")) input))))
-    (loop (if (not (char= #\, (peek-char t input nil #\Nul)))
-              (return)
-              (progn
-               (read-char input)
-               (acc
-                (string-right-trim +white-spaces+
-                                   (core-reader:read-string-till
-                                     (lambda (c) (find c ",{")) input))))))))
+  (let* ((selectors (cons :head nil)) (tail selectors))
+    (labels ((consume-selector (thunk)
+               (with-output-to-string (*standard-output*)
+                 (funcall thunk)
+                 (handler-case
+                     (core-reader:do-stream-till (c (lambda (c) (find c ",{"))
+                                                    input)
+                       (write-char c))
+                   (end-of-file ()))))
+             (trim-whitespaces (string)
+               (string-right-trim +white-spaces+ string))
+             (collect (x)
+               (rplacd tail (setf tail (list x)))))
+      (collect
+        (trim-whitespaces
+          (consume-selector (lambda () (write-char first-char)))))
+      (loop (if (not (char= #\, (peek-char t input nil #\Nul)))
+                (return)
+                (progn
+                 (read-char input)
+                 (collect
+                   (trim-whitespaces (consume-selector (constantly nil)))))))
+      (cdr selectors))))
 
 (defstruct (cdc-token (:include css-token)))
 
