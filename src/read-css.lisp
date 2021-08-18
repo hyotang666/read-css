@@ -169,17 +169,6 @@
                        (unread-char char input)))))))
     (rec 0)))
 
-(defun consume-till (string input)
-  (let* ((head (cons :head nil)) (tail head))
-    (dotimes (x (the (integer 2 #.array-total-size-limit) (length string)))
-      (rplacd tail (setf tail (list (read-char input)))))
-    (loop (if (every #'char= string (print (cdr head)))
-              (return t)
-              (setf (cadr head) (read-char input)
-                    (cdr tail) (cdr head)
-                    (cdr head) (cddr head)
-                    tail (rplacd (cdr tail) nil))))))
-
 (defun remove-if-find
        (function list &aux (function (coerce function 'function)))
   (let* ((head (cons :head nil)) (tail head) (found?))
@@ -523,17 +512,12 @@
 (defun consume-comments
        (&optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
-  (macrolet ((! (form)
-               `(handler-case ,form
-                  (end-of-file ()
-                    (error 'end-of-css :stream input))
-                  (:no-error (char)
-                    char))))
-    (loop :for char = (! (read-char input))
-          :if (char= #\* char)
-            :do (let ((end? (! (read-char input))))
-                  (when (char= #\/ end?)
-                    (return (values)))))))
+  (handler-case
+      (core-reader:do-stream-till-suffix (c "*/" :stream input)
+        (declare (ignore c)))
+    (end-of-file ()
+      (error 'end-of-css :stream input)))
+  (values))
 
 ;;;; 4.3.14. Consume the remnants of a bad url
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-the-remnants-of-a-bad-url
@@ -938,7 +922,8 @@
   (if (stream-start-with "!--" input)
       (progn
        (dotimes (x 3) (read-char input)) ; discard !--.
-       (consume-till "-->" input))
+       (core-reader:do-stream-till-suffix (c "-->" :stream input)
+         (declare (ignore c))))
       (make-delim-token :value (string character))))
 
 (defstruct at-rule
