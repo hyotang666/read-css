@@ -461,16 +461,13 @@
   (peek-char t input nil nil)
   (let ((name
          (with-output-to-string (*standard-output*)
-           (loop :for c = (read-char input nil nil)
-                 :if (null c)
-                   :do (loop-finish)
-                 :else :if (name-code-point-p c)
-                   :do (write-char c)
-                 :else :if (and (char= #\\ c) (valid-escape-p input))
-                   :do (write-char (consume-an-escaped-code-point input))
-                 :else
-                   :do (unread-char c input)
-                       (loop-finish)))))
+           (core-reader:do-stream (c input nil nil)
+             (cond ((name-code-point-p c) (write-char c))
+                   ((and (char= #\\ c) (valid-escape-p input))
+                    (write-char (consume-an-escaped-code-point input)))
+                   (t
+                    (unread-char c input)
+                    (return)))))))
     (if (equal "" name)
         (error 'name-parse-error
                :character (peek-char nil input nil 'end-of-file))
@@ -520,13 +517,10 @@
 (defun consume-the-remnants-of-a-bad-url
        (&optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
-  (loop :for c = (read-char input nil nil)
-        :if (or (null c) (char= #\) c))
-          :do (loop-finish)
-        :else :if (and (char= #\\ c) (valid-escape-p input))
-          :do (consume-an-escaped-code-point input)
-              ;; Discar c
-              )
+  (core-reader:do-stream (c input nil nil)
+    (cond ((char= #\) c) (return))
+          ((and (char= #\\ c) (valid-escape-p input))
+           (consume-an-escaped-code-point input))))
   (values))
 
 ;;;; 4.3.6. Consume a url token
@@ -553,42 +547,38 @@
   (let* ((bad-url-p)
          (string
           (with-output-to-string (*standard-output*)
-            (loop :for c = (read-char input nil nil)
-                  :if (null c)
-                    :do (signal 'end-of-css :stream input)
-                        (loop-finish)
-                  :else :if (char= #\) c)
-                    :do (loop-finish)
-                  :else :if (white-space-p c)
-                    :do (let ((next (peek-char t input nil nil)))
-                          (cond
-                            ((null next)
-                             (signal 'end-of-css :stream input)
-                             (loop-finish))
-                            ((char= #\) next) (loop-finish))
-                            (t
-                             (consume-the-remnants-of-a-bad-url input)
-                             (setf bad-url-p t)
-                             (loop-finish))))
-                  :else :if (or (find c "\"'(") (non-printable-code-point-p c))
-                    :do (signal 'simple-parse-error
-                                :format-control "url( immediately follows ~S is invalid."
-                                :format-arguments (list c))
-                        (consume-the-remnants-of-a-bad-url input)
-                        (setf bad-url-p t)
-                        (loop-finish)
-                  :else :if (char= #\\ c)
-                    :do (if (valid-escape-p input)
-                            (write-char (consume-an-escaped-code-point input))
-                            (progn
-                             (signal 'invalid-escape
-                                     :character (peek-char nil input nil
-                                                           'end-of-file))
-                             (consume-the-remnants-of-a-bad-url input)
-                             (setf bad-url-p t)
-                             (loop-finish)))
-                  :else
-                    :do (write-char c)))))
+            (core-reader:do-stream (c input nil
+                                    (signal 'end-of-css :stream input))
+              (cond ((char= #\) c) (return))
+                    ((white-space-p c)
+                     (let ((next (peek-char t input nil nil)))
+                       (cond
+                         ((null next)
+                          (signal 'end-of-css :stream input)
+                          (return))
+                         ((char= #\) next) (return))
+                         (t
+                          (consume-the-remnants-of-a-bad-url input)
+                          (setf bad-url-p t)
+                          (return)))))
+                    ((or (find c "\"'(") (non-printable-code-point-p c))
+                     (signal 'simple-parse-error
+                             :format-control "url( immediately follows ~S is invalid."
+                             :format-arguments (list c))
+                     (consume-the-remnants-of-a-bad-url input)
+                     (setf bad-url-p t)
+                     (return))
+                    ((char= #\\ c)
+                     (if (valid-escape-p input)
+                         (write-char (consume-an-escaped-code-point input))
+                         (progn
+                          (signal 'invalid-escape
+                                  :character (peek-char nil input nil
+                                                        'end-of-file))
+                          (consume-the-remnants-of-a-bad-url input)
+                          (setf bad-url-p t)
+                          (return))))
+                    (t (write-char c)))))))
     (if bad-url-p
         (make-bad-url-token :value string)
         (make-url-token :value string))))
@@ -685,31 +675,27 @@
   (let* ((bad-string-p)
          (contents
           (with-output-to-string (*standard-output*)
-            (loop :for char = (read-char input nil nil)
-                  :if (null char)
-                    :do (signal 'end-of-css :stream input)
-                        (loop-finish)
-                  :else :if (char= char character)
-                    :do (loop-finish)
-                  :else :if (find char +newlines+)
-                    :do (signal 'simple-parse-error
-                                :format-control "~S in the string is invalid."
-                                :format-arguments (list char))
-                        (unread-char char input)
-                        (setf bad-string-p t)
-                        (loop-finish)
-                  :else :if (char= #\\ char)
-                    :do (let ((next (read-char input nil nil)))
-                          (cond
-                            ((null next) ; do nothing.
-                             (signal 'end-of-css :stream input))
-                            ((find next +newlines+)) ; consume newline.
-                            (t
-                             (unread-char next input)
-                             (write-char
-                               (consume-an-escaped-code-point input)))))
-                  :else
-                    :do (write-char char)))))
+            (core-reader:do-stream (char input nil
+                                         (signal 'end-of-css :stream input))
+              (cond ((char= char character) (return))
+                    ((find char +newlines+)
+                     (signal 'simple-parse-error
+                             :format-control "~S in the string is invalid."
+                             :format-arguments (list char))
+                     (unread-char char input)
+                     (setf bad-string-p t)
+                     (return))
+                    ((char= #\\ char)
+                     (let ((next (read-char input nil nil)))
+                       (cond
+                         ((null next) ; do nothing.
+                          (signal 'end-of-css :stream input))
+                         ((find next +newlines+)) ; consume newline.
+                         (t
+                          (unread-char next input)
+                          (write-char
+                            (consume-an-escaped-code-point input))))))
+                    (t (write-char char)))))))
     (if bad-string-p
         (make-bad-string-token :value contents)
         (make-string-token :value contents))))
