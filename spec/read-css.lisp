@@ -230,6 +230,12 @@
 	      (read-char in))))
 :values ((".commentBox") #\{)
 
+#?(with-input-from-string (in "{")
+    (let ((in (read-css::ensure-input-stream in)))
+      (values (consume-selectors in #\p)
+	      (read-char in))))
+:values (("p") #\{)
+
 (requirements-about CONSUME-A-NUMBER :doc-type function)
 
 ;;;; Description:
