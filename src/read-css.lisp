@@ -662,7 +662,7 @@
         consume-a-string-token))
 
 (defun consume-a-string-token
-       (character
+       (delimiter
         &optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
   (let* ((bad-string-p)
@@ -670,7 +670,7 @@
           (with-output-to-string (*standard-output*)
             (core-reader:do-stream (char input nil
                                          (signal 'end-of-css :stream input))
-              (cond ((char= char character) (return))
+              (cond ((char= char delimiter) (return))
                     ((find char +newlines+)
                      (signal 'simple-parse-error
                              :format-control "~S in the string is invalid."
