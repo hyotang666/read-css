@@ -597,6 +597,7 @@
               (loop-finish)
         :else :if (char= #\, c)
           :collect nil ; as null component.
+          :and :do (read-char input)
         :else
           :collect (handler-case (read-style input t t t)
                      (name-parse-error (condition)
@@ -731,6 +732,7 @@
             :do (loop-finish)
           :else :if (char= #\, c)
             :collect nil ; as null component.
+            :and :do (read-char input)
           :else
             :collect (decls)
             :and :do (let ((c (peek-char t input nil nil)))
