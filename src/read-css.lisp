@@ -938,16 +938,16 @@
         |!-reader|))
 
 (defun |!-reader| (input !)
-  (let ((name (consume-a-name input)))
-    (cond
-      ((equal "" name)
-       (signal 'end-of-css :stream input)
-       (make-delim-token :value (string !)))
-      ((equal "important" name) (make-important-token))
-      (t
-       (error 'simple-parse-error
-              :format-control "Unknown syntax !~A."
-              :format-arguments (list name))))))
+  (handler-case (consume-a-name input)
+    (name-parse-error (c)
+      (signal c)
+      (make-delim-token :value (string !)))
+    (:no-error (name)
+      (if (equal "important" name)
+          (make-important-token)
+          (error 'simple-parse-error
+                 :format-control "Unknown syntax !~A."
+                 :format-arguments (list name))))))
 
 ;;;; CSS-READTABLE
 #| https://www.w3.org/TR/css-syntax-3/#parser-diagrams
