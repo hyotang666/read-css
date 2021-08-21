@@ -4,6 +4,25 @@
 (in-package :read-css.spec)
 (setup :read-css)
 
+(requirements-about common-lisp)
+
+#.(or ; To avoid #-.
+    #+(or clisp)
+    '#?(with-input-from-string (in "abcd")
+	 (let ((a (read-char in))
+	       (b (read-char in)))
+	   (unread-char b in)
+	   (unread-char a in)))
+    :signals error
+    ;; The default
+    '#?(with-input-from-string (in "abcd")
+	 (let ((a (read-char in))
+	       (b (read-char in)))
+	   (unread-char b in)
+	   (unread-char a in)
+	   (read-char in)))
+    => #\a)
+
 (requirements-about CONSUME-COMMENTS :doc-type function)
 
 ;;;; Description:

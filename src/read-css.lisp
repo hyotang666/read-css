@@ -85,20 +85,36 @@
 ;;;; CSS-INPUT-STREAM
 ; To enable multitime UNREAD-CHAR.
 
-(defclass css-input-stream (trivial-gray-streams:fundamental-character-input-stream)
-  ((stream :initarg :stream :reader css-input-stream)
-   (kept :initform nil :accessor kept-chars)))
+#+(or clisp)
+(progn
+ (defclass css-input-stream (trivial-gray-streams:fundamental-character-input-stream)
+   ((stream :initarg :stream :reader css-input-stream)
+    (kept :initform nil :accessor kept-chars)))
+ (defmethod trivial-gray-streams:stream-read-char ((input css-input-stream))
+   (or (pop (kept-chars input)) (read-char (css-input-stream input) nil :eof)))
+ (defmethod trivial-gray-streams:stream-unread-char
+            ((input css-input-stream) (c character))
+   (push c (kept-chars input))
+   nil)
+ (defmethod trivial-gray-streams:stream-file-position
+            ((input css-input-stream))
+   (file-position (css-input-stream input))))
 
-(defmethod trivial-gray-streams:stream-read-char ((input css-input-stream))
-  (or (pop (kept-chars input)) (read-char (css-input-stream input) nil :eof)))
+(defun ensure-input-stream (stream-designator)
+  #.(or ;; To avoid #-.
+        #+(or clisp)
+        '(etypecase stream-designator
+           (css-input-stream stream-designator)
+           (stream (make-instance 'css-input-stream :stream stream-designator))
+           ((eql t) (make-instance 'css-input-stream :stream *terminal-io*))
+           (null (make-instance 'css-input-stream :stream *standard-input*)))
+        ;; The default.
+        '(etypecase stream-designator
+           (stream stream-designator)
+           (null *standard-input*)
+           ((eql t) *terminal-io*))))
 
-(defmethod trivial-gray-streams:stream-unread-char
-           ((input css-input-stream) (c character))
-  (push c (kept-chars input))
-  nil)
-
-(defmethod trivial-gray-streams:stream-file-position ((input css-input-stream))
-  (file-position (css-input-stream input)))
+(deftype input-stream () '#.(or #+(or clisp) 'css-input-stream 'stream))
 
 ;;;; ABSTRUCT STRUCTURE
 
@@ -144,19 +160,12 @@
 
 ;;;; Utilities
 
-(defun ensure-input-stream (stream-designator)
-  (etypecase stream-designator
-    (css-input-stream stream-designator)
-    (stream (make-instance 'css-input-stream :stream stream-designator))
-    ((eql t) (make-instance 'css-input-stream :stream *terminal-io*))
-    (null (make-instance 'css-input-stream :stream *standard-input*))))
-
 (defun non-ascii-code-point-p (char)
   ;; https://www.w3.org/TR/css-syntax-3/#non-ascii-code-point
   (<= #x80 (char-code char)))
 
 (declaim
- (ftype (function (string css-input-stream) (values boolean &optional))
+ (ftype (function (string input-stream) (values boolean &optional))
         stream-start-with))
 
 (defmacro unread-protect ((var input) &body body)
@@ -423,7 +432,7 @@
 ;;; https://www.w3.org/TR/css-syntax-3/#would-start-an-identifier
 
 (declaim
- (ftype (function (css-input-stream) (values boolean &optional))
+ (ftype (function (input-stream) (values boolean &optional))
         start-an-identifier-p))
 
 (defun start-an-identifier-p (input)
@@ -588,8 +597,7 @@
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-a-simple-block
 
 (declaim
- (ftype (function ((or null character) css-input-stream)
-         (values list &optional))
+ (ftype (function ((or null character) input-stream) (values list &optional))
         consume-a-simple-block))
 
 (defun consume-a-simple-block (end-char input)
@@ -720,7 +728,7 @@
   (list nil :type list))
 
 (declaim
- (ftype (function (sequence css-input-stream) (values list &optional))
+ (ftype (function (sequence input-stream) (values list &optional))
         consume-components))
 
 (defun consume-components (end-chars input)
@@ -838,7 +846,7 @@
                          (t nil))))))
 
 (declaim
- (ftype (function (css-input-stream character)
+ (ftype (function (input-stream character)
          (values list ; of-type simple-string.
                  &optional))
         consume-selectors))
