@@ -905,26 +905,18 @@
 
 (defun |#rgb-reader| (input hash)
   (declare (ignore hash))
-  (let ((hex
-         (loop :for c = (read-char input nil nil)
-               :repeat 6
-               :if (null c)
-                 :do (return)
-               :else :if (digit-char-p c 16)
-                 :collect :it
-               :else
-                 :do (loop-finish)
-               :finally (unread-char c input))))
-    (ecase (length hex)
-      (3
-       (apply #'cl-colors2:rgb
-              (mapcar
-                (lambda (x) (float (/ (dpb x (byte 4 0) (ash x 4)) #xFF)))
-                hex)))
-      (6
-       (apply #'cl-colors2:rgb
-              (loop :for (a b) :on hex :by #'cddr
-                    :collect (float (/ (dpb b (byte 4 0) (ash a 4)) #xFF))))))))
+  (let ((notation
+         (with-output-to-string (*standard-output*)
+           (loop :for c = (read-char input nil nil)
+                 :repeat 6
+                 :if (null c)
+                   :do (return)
+                 :else :if (digit-char-p c 16)
+                   :do (write-char c)
+                 :else
+                   :do (loop-finish)
+                 :finally (unread-char c input)))))
+    (cl-colors2:parse-hex-rgb notation)))
 
 (defun |"-reader| (stream character) (consume-a-string-token character stream))
 
