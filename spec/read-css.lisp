@@ -1,11 +1,5 @@
 (defpackage :read-css.spec
-  (:use :cl :jingoh :read-css)
-  (:import-from :read-css #:read-css #:consume-a-number #:consume-a-numeric-token
-		#:consume-a-name #:consume-an-ident-like-token #:consume-a-url-token
-		#:consume-an-escaped-code-point #:consume-a-string-token
-		#:consume-a-function #:start-an-identifier-p #:consume-a-simple-block
-		#:|{-reader| #:|#rgb-reader| #:consume-selectors #:consume-comments
-		#:read-style))
+  (:use :cl :jingoh :read-css))
 (in-package :read-css.spec)
 (setup :read-css)
 
