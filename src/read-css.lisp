@@ -57,9 +57,9 @@
            #:consume-a-declaration
            #:consume-a-function
            #:consume-a-list-of-declarations
-           #:comsume-a-name
+           #:consume-a-name
            #:consume-a-number
-           #:consume-a-numric-token
+           #:consume-a-numeric-token
            #:consume-a-simple-block
            #:consume-a-string-token
            #:consume-a-url-token

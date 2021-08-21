@@ -1,5 +1,6 @@
 (defpackage :read-css.spec
-  (:use :cl :jingoh :read-css))
+  (:use :cl :jingoh :read-css)
+  (:import-from :read-css "#rgb-reader" "{-reader"))
 (in-package :read-css.spec)
 (setup :read-css)
 
