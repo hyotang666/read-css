@@ -837,6 +837,37 @@
                          ((char= #\; next) (read-char input)) ; discard.
                          (t nil))))))
 
+(declaim
+ (ftype (function (css-input-stream character)
+         (values list ; of-type simple-string.
+                 &optional))
+        consume-selectors))
+
+(defun consume-selectors (input first-char)
+  (let* ((selectors (cons :head nil)) (tail selectors))
+    (labels ((consume-selector (thunk)
+               (with-output-to-string (*standard-output*)
+                 (funcall thunk)
+                 (handler-case
+                     (core-reader:do-stream-till (c (lambda (c) (find c ",{"))
+                                                    input)
+                       (write-char c))
+                   (end-of-file ()))))
+             (trim-whitespaces (string)
+               (string-right-trim +white-spaces+ string))
+             (collect (x)
+               (rplacd tail (setf tail (list x)))))
+      (collect
+        (trim-whitespaces
+          (consume-selector (lambda () (write-char first-char)))))
+      (loop (if (not (char= #\, (peek-char t input nil #\Nul)))
+                (return)
+                (progn
+                 (read-char input)
+                 (collect
+                   (trim-whitespaces (consume-selector (constantly nil)))))))
+      (cdr selectors))))
+
 ;;;; READERS
 ;;;; 4.3.1. Consume a token
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-token
@@ -892,37 +923,6 @@
 (defstruct qualified-rule
   (selectors nil :type list)
   (declarations nil :type list))
-
-(declaim
- (ftype (function (css-input-stream character)
-         (values list ; of-type simple-string.
-                 &optional))
-        consume-selectors))
-
-(defun consume-selectors (input first-char)
-  (let* ((selectors (cons :head nil)) (tail selectors))
-    (labels ((consume-selector (thunk)
-               (with-output-to-string (*standard-output*)
-                 (funcall thunk)
-                 (handler-case
-                     (core-reader:do-stream-till (c (lambda (c) (find c ",{"))
-                                                    input)
-                       (write-char c))
-                   (end-of-file ()))))
-             (trim-whitespaces (string)
-               (string-right-trim +white-spaces+ string))
-             (collect (x)
-               (rplacd tail (setf tail (list x)))))
-      (collect
-        (trim-whitespaces
-          (consume-selector (lambda () (write-char first-char)))))
-      (loop (if (not (char= #\, (peek-char t input nil #\Nul)))
-                (return)
-                (progn
-                 (read-char input)
-                 (collect
-                   (trim-whitespaces (consume-selector (constantly nil)))))))
-      (cdr selectors))))
 
 (defun |<-reader| (input character)
   (if (stream-start-with "!--" input)
