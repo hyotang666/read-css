@@ -3,8 +3,12 @@
 (defpackage :read-css
   (:use :cl)
   #| Main API for light users. |#
-  (:export #:read-css #:read-style #:read-style-from-string)
+  (:export "READ-CSS" "READ-STYLE" "READ-STYLE-FROM-STRING")
   #| API for heavy users. |#
+  (:export ;;;; CONFIGURATION.
+           "*PRINT-CODE-POINT*"
+           "*DEFAULT-STRING-DELIMITER*"
+           "*PRETTY-COLOR-NAME*")
   (:export ;;;; Conditions.
            "CSS-PARSE-ERROR"
            "END-OF-CSS"
@@ -118,11 +122,15 @@
 
 ;;;; CONFIGURATION
 
+(declaim (type boolean *print-code-point* *pretty-color-name*))
+
 (defparameter *print-code-point* nil)
 
-(defparameter *default-string-delimiter* #\")
-
 (defparameter *pretty-color-name* t)
+
+(declaim (type (member #\" #\') *default-string-delimiter*))
+
+(defparameter *default-string-delimiter* #\")
 
 (defmethod print-object ((c cl-colors2:rgb) stream)
   (cond (*print-readably* (call-next-method))
