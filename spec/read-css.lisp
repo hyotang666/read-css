@@ -801,9 +801,9 @@
 	    (read-char in)))
 :multiple-value-satisfies
 (lambda (color char)
-  (& (equalp color (cl-colors2:rgb (float (/ #x12 #xFF))
-				   (float (/ #x34 #xFF))
-				   (float (/ #x56 #xFF))))
+  (& (equalp color (cl-colors2:rgb (/ #x12 #xFF)
+				   (/ #x34 #xFF)
+				   (/ #x56 #xFF)))
      (eql char #\7)))
 
 (requirements-about |{-reader| :doc-type function)
@@ -1011,7 +1011,7 @@
 				  :list (list (list (read-css::make-dimension-token
 						      :value 1 :unit "px")
 						    "solid"
-						    (cl-colors2:rgb 0.8 0.8 0.8))))
+						    (cl-colors2:rgb 4/5 4/5 4/5))))
 				(read-css::make-css-declaration
 				  :name "padding"
 				  :list (list (list (read-css::make-dimension-token
@@ -1024,7 +1024,7 @@
 :satisfies (lambda (x)
 	     (& (equalp x `(,(read-css::make-css-declaration
 			       :name "background"
-			       :list `((,(cl-colors2:rgb 1.0 1.0 0.8862745))))
+			       :list `((,(cl-colors2:rgb 1 1 226/255))))
 			     ,(read-css::make-css-declaration
 				:name "border-radius"
 				:list `((,(read-css::make-dimension-token
