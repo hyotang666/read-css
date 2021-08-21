@@ -116,6 +116,27 @@
 
 (deftype input-stream () '#.(or #+(or clisp) 'css-input-stream 'stream))
 
+;;;; CONFIGURATION
+
+(defparameter *print-code-point* nil)
+
+(defparameter *default-string-delimiter* #\")
+
+(defparameter *pretty-color-name* t)
+
+(defmethod print-object ((c cl-colors2:rgb) stream)
+  (cond (*print-readably* (call-next-method))
+        (*print-escape* (call-next-method))
+        (*pretty-color-name*
+         (let ((pretty
+                (rassoc c cl-colors2:*svg-extended-colors-list*
+                        :test #'cl-colors2:color-equals
+                        :key #'symbol-value)))
+           (if pretty
+               (write-string (car pretty) stream)
+               (cl-colors2:print-hex-rgb c :destination stream))))
+        (t (cl-colors2:print-hex-rgb c :destination stream))))
+
 ;;;; ABSTRUCT STRUCTURE
 
 (defstruct css-token)
@@ -123,8 +144,25 @@
 (defstruct (string-token (:include css-token))
   (value (error "VALUE is required.") :type string))
 
+(defmethod print-object ((s string-token) stream)
+  (cond (*print-readably* (call-next-method))
+        (*print-escape* (call-next-method))
+        (*print-code-point*
+         (pprint-logical-block
+             (stream nil :prefix (string *default-string-delimiter*) :suffix
+              (string *default-string-delimiter*))
+           (loop :for c :across (string-token-value s)
+                 :if (non-ascii-code-point-p c)
+                   :do (format stream "\\~6,'0X" (char-code c)))))
+        (t (prin1 (string-token-value s) stream))))
+
 (defstruct (number-token (:include css-token))
   (value (error "VALUE is required.") :type real))
+
+(defmethod print-object ((n number-token) stream)
+  (cond (*print-readably* (call-next-method))
+        (*print-escape* (call-next-method))
+        (t (write (number-token-value n) :stream stream))))
 
 ;;;; CONDITIONS
 
@@ -483,8 +521,20 @@
 
 (defstruct (percentage-token (:include number-token)))
 
+(defmethod print-object ((p percentage-token) stream)
+  (cond (*print-readably* (call-next-method))
+        (*print-escape* (call-next-method))
+        (t (funcall (formatter "~W%") stream (number-token-value p)))))
+
 (defstruct (dimension-token (:include number-token))
   (unit (error "UNIT is required.") :type string))
+
+(defmethod print-object ((d dimension-token) stream)
+  (cond (*print-readably* (call-next-method))
+        (*print-escape* (call-next-method))
+        (t
+         (funcall (formatter "~W~A") stream (number-token-value d)
+                  (dimension-token-unit d)))))
 
 (declaim
  (ftype (function (&optional (or boolean stream))
@@ -533,7 +583,17 @@
 
 (defstruct (url-token (:include string-token)))
 
+(defmethod print-object ((url url-token) stream)
+  (cond (*print-readably* (call-next-method))
+        (*print-escape* (call-next-method))
+        (t (funcall (formatter "url(~a)") stream (string-token-value url)))))
+
 (defstruct (bad-url-token (:include string-token)))
+
+(defmethod print-object ((url bad-url-token) stream)
+  (cond (*print-readably* (call-next-method))
+        (*print-escape* (call-next-method))
+        (t (funcall (formatter "url(~a)") stream (string-token-value url)))))
 
 (declaim
  (ftype (function (&optional (or boolean stream))
@@ -636,6 +696,13 @@
   (name (error "NAME is required.") :type string)
   (args (error "VALUE is required.") :type list))
 
+(defmethod print-object ((fun function-token) stream)
+  (cond (*print-readably* (call-next-method))
+        (*print-escape* (call-next-method))
+        (t
+         (funcall (formatter "~A(~{~A~^, ~})") stream (function-token-name fun)
+                  (function-token-args fun)))))
+
 (defun consume-a-function
        (name
         &optional (input *standard-input*)
@@ -726,6 +793,14 @@
   (name (error "NAME is required.") :type string)
   (importantp nil :type boolean)
   (list nil :type list))
+
+(defmethod print-object ((d css-declaration) stream)
+  (cond (*print-readably* (call-next-method))
+        (*print-escape* (call-next-method))
+        (t
+         (funcall (formatter "~A:~{~{~A~^ ~}~^, ~}~:[~;!important~];") stream
+                  (css-declaration-name d) (css-declaration-list d)
+                  (css-declaration-importantp d)))))
 
 (declaim
  (ftype (function (sequence input-stream) (values list &optional))
@@ -882,6 +957,11 @@
 
 (defstruct (delim-token (:include string-token)))
 
+(defmethod print-object ((d delim-token) stream)
+  (cond (*print-readably* (call-next-method))
+        (*print-escape* (call-next-method))
+        (t (write-string (string-token-value d) stream))))
+
 (declaim (ftype (function (stream character)) |/-reader|))
 
 (defun |/-reader| (input character)
@@ -924,6 +1004,14 @@
   (selectors nil :type list)
   (declarations nil :type list))
 
+(defmethod print-object ((q qualified-rule) stream)
+  (cond (*print-readably* (call-next-method))
+        (*print-escape* (call-next-method))
+        (t
+         (funcall (formatter "~<~{~A~^, ~} {~4I ~_~{~A ~^~_~}~I~_}~:>") stream
+                  (list (qualified-rule-selectors q)
+                        (qualified-rule-declarations q))))))
+
 (defun |<-reader| (input character)
   (if (stream-start-with "!--" input)
       (progn
@@ -937,7 +1025,19 @@
   (components nil :type list)
   (block nil :type list))
 
+(defmethod print-object ((a at-rule) stream)
+  (cond (*print-readably* (call-next-method))
+        (*print-escape* (call-next-method))
+        (t
+         (funcall (formatter "@~A ~{~W~^, ~}~@[~_~W~];~_") stream
+                  (at-rule-name a) (at-rule-components a) (at-rule-block a)))))
+
 (defstruct (at-keyword-token (:include string-token)))
+
+(defmethod print-object ((a at-keyword-token) stream)
+  (cond (*print-readably* (call-next-method))
+        (*print-escape* (call-next-method))
+        (t (funcall (formatter "@~A") stream (string-token-value a)))))
 
 (declaim
  (ftype (function (stream character)
