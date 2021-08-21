@@ -1,4 +1,4 @@
-# READ-CSS 1.0.0
+# READ-CSS 2.0.0
 ## What is this?
 CSS Reader.
 
@@ -15,8 +15,6 @@ For details, see [spec file](spec/read-css.lisp).
 
 ## From developer
 Alpha quality.
-
-Currently not support serialization.
 
 ### Product's goal
 
