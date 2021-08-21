@@ -486,10 +486,8 @@
 
 ; Case bad newline.
 #?(with-input-from-string (in (format nil "foo~%bar\"")) (consume-a-string-token #\" in))
-:satisfies (lambda (result)
-	     (& (typep result 'read-css::bad-string-token)
-		(equal "foo" (read-css::bad-string-token-value result))))
-,:ignore-signals nil
+:signals parse-error
+,:with-restarts continue
 
 (requirements-about CONSUME-AN-IDENT-LIKE-TOKEN :doc-type function)
 
@@ -554,6 +552,39 @@
 			   (read-css::make-number-token :value 1.00)))
 	     function-token)
      (eql #\; char)))
+
+(requirements-about CONSUME-COMPONENTS :doc-type function)
+
+;;;; Description:
+
+#+syntax (CONSUME-COMPONENTS end-chars input) ; => result
+
+;;;; Arguments and Values:
+
+; end-chars := sequence
+
+; input := css-input-stream
+
+; result := list
+
+;;;; Affected By:
+
+;;;; Side-Effects:
+
+;;;; Notes:
+
+;;;; Exceptional-Situations:
+
+;;;; Tests:
+#?(with-input-from-string (in "6px;")
+    (let ((*readtable* (named-readtables:find-readtable 'read-css::css-non-toplevel))
+	  (in (read-css::ensure-input-stream in)))
+      (consume-components ";" in)))
+:satisfies (lambda (list)
+	     (& (equalp list
+			`((,(read-css::make-dimension-token
+			      :value 6
+			      :unit "px"))))))
 
 (requirements-about CONSUME-A-SIMPLE-BLOCK :doc-type function)
 
@@ -688,6 +719,39 @@
 			   (read-css::make-dimension-token :value 7
 							   :unit "px"))))
      (eql char #\;)))
+
+(requirements-about CONSUME-A-DECLARATION :doc-type function)
+
+;;;; Description:
+
+#+syntax (CONSUME-A-DECLARATION &optional (input *standard-input*)) ; => result
+
+;;;; Arguments and Values:
+
+; input := (or boolean stream)
+
+; result := (or null css-declaration)
+
+;;;; Affected By:
+
+;;;; Side-Effects:
+
+;;;; Notes:
+
+;;;; Exceptional-Situations:
+
+;;;; Tests:
+#?(with-input-from-string (in "padding-top:6px;")
+    (let ((*readtable* (named-readtables::find-readtable 'read-css::css-non-toplevel))
+	  (in (read-css::ensure-input-stream in)))
+      (consume-a-declaration in)))
+:satisfies (lambda (decl)
+	     (& (equalp decl
+			(read-css::make-css-declaration
+			  :name "padding-top"
+			  :list `((,(read-css::make-dimension-token
+				      :value 6
+				      :unit "px")))))))
 
 (requirements-about |#rgb-reader| :doc-type function)
 

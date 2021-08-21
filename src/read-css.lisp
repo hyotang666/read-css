@@ -116,6 +116,9 @@
 
 (define-condition end-of-css (end-of-file css-parse-error) ())
 
+(define-condition end-of-declaration (end-of-css)
+  ((styles :initarg :declarations :reader styles)))
+
 (define-condition invalid-escape (css-parse-error)
   ((char :initarg :character :reader parse-error-character))
   (:report
@@ -541,13 +544,16 @@
          (string
           (with-output-to-string (*standard-output*)
             (core-reader:do-stream (c input nil
-                                    (signal 'end-of-css :stream input))
+                                    (cerror "Finish to consume a url token."
+                                            'end-of-css
+                                            :stream input))
               (cond ((char= #\) c) (return))
                     ((white-space-p c)
                      (let ((next (peek-char t input nil nil)))
                        (cond
                          ((null next)
-                          (signal 'end-of-css :stream input)
+                          (cerror "Finish to consume a url token." 'end-of-css
+                                  :stream input)
                           (return))
                          ((char= #\) next) (return))
                          (t
@@ -555,7 +561,8 @@
                           (setf bad-url-p t)
                           (return)))))
                     ((or (find c "\"'(") (non-printable-code-point-p c))
-                     (signal 'simple-parse-error
+                     (cerror "Finish to consume a url token."
+                             'simple-parse-error
                              :format-control "url( immediately follows ~S is invalid."
                              :format-arguments (list c))
                      (consume-the-remnants-of-a-bad-url input)
@@ -565,9 +572,10 @@
                      (if (valid-escape-p input)
                          (write-char (consume-an-escaped-code-point input))
                          (progn
-                          (signal 'invalid-escape
-                                  :character (peek-char nil input nil
-                                                        'end-of-file))
+                          (cerror
+                            "Consume the remnants of a bad url then finish."
+                            'invalid-escape
+                            :character (peek-char nil input nil 'end-of-file))
                           (consume-the-remnants-of-a-bad-url input)
                           (setf bad-url-p t)
                           (return))))
@@ -590,7 +598,10 @@
   ;; If end-char is `NIL`, do implicit list behavior.
   (loop :for c = (peek-char t input nil nil)
         :if (null c)
-          :do (signal 'end-of-css :stream input)
+          :do (cerror
+                (format nil "Finish to consume a simple block. ~S" end-char)
+                'end-of-css
+                :stream input)
               (loop-finish)
         :else :if (eql end-char c)
           :do (read-char input) ; discar end-char.
@@ -670,10 +681,13 @@
          (contents
           (with-output-to-string (*standard-output*)
             (core-reader:do-stream (char input nil
-                                         (signal 'end-of-css :stream input))
+                                         (cerror
+                                           "Finish to consume a string token."
+                                           'end-of-css
+                                           :stream input))
               (cond ((char= char delimiter) (return))
                     ((find char +newlines+)
-                     (signal 'simple-parse-error
+                     (cerror "Return bad string token." 'simple-parse-error
                              :format-control "~S in the string is invalid."
                              :format-arguments (list char))
                      (unread-char char input)
@@ -683,7 +697,10 @@
                      (let ((next (read-char input nil nil)))
                        (cond
                          ((null next) ; do nothing.
-                          (signal 'end-of-css :stream input))
+                          (cerror "Finish to consume a string token."
+                                  'end-of-css
+                                  :stream input)
+                          (return))
                          ((find next +newlines+)) ; consume newline.
                          (t
                           (unread-char next input)
@@ -718,15 +735,18 @@
            (decls ()
              (loop :for c = (peek-char t input nil nil)
                    :if (null c)
-                     :do (signal 'end-of-css :stream input)
-                         (loop-finish)
+                     :do (error 'end-of-declaration
+                                :stream input
+                                :styles styles)
                    :else :if (or (char= #\, c) (find c end-chars))
                      :do (loop-finish)
                    :else
-                     :collect (style))))
+                     :collect (style) :into styles
+                   :finally (return styles))))
     (loop :for c := (peek-char t input nil nil)
           :if (null c)
-            :do (signal 'end-of-css :stream input)
+            :do (cerror "Finish to consume components." 'end-of-css
+                        :stream input)
                 (loop-finish)
           :else :if (find c end-chars)
             :do (loop-finish)
@@ -734,11 +754,15 @@
             :collect nil ; as null component.
             :and :do (read-char input)
           :else
-            :collect (decls)
+            :collect (handler-case (decls)
+                       (end-of-declaration (c)
+                         (cerror "Finish to consume components." c)
+                         (styles c)))
             :and :do (let ((c (peek-char t input nil nil)))
                        (cond
                          ((null c)
-                          (signal 'end-of-css :stream input)
+                          (cerror "Finish to consume components." 'end-of-css
+                                  :stream input)
                           (loop-finish))
                          ((find c end-chars) (loop-finish))
                          ((char= #\, c) (read-char input)) ; discard.
@@ -758,7 +782,7 @@
         (colon? (peek-char t input nil nil))
         important?)
     (if (not (eql #\: colon?))
-        (signal 'simple-parse-error
+        (cerror "Return NIL." 'simple-parse-error
                 :format-control "Declaration name does not follow : is invalid. ~S"
                 :format-arguments (list colon?))
         (make-css-declaration :name name
@@ -784,7 +808,8 @@
   (uiop:while-collecting (acc)
     (loop :for c = (peek-char t input nil nil)
           :if (null c)
-            :do (signal 'end-of-css :stream input)
+            :do (cerror "Finish to consume a list of declarations." 'end-of-css
+                        :stream input)
                 (loop-finish)
           :else :if (char= #\} c)
             :do (read-char input)
@@ -803,9 +828,14 @@
                   (:no-error (decl)
                     (acc decl)))
             :and :do (let ((next (peek-char t input nil nil)))
-                       (cond ((null next) (signal 'end-of-css :stream input))
-                             ((char= #\; next) (read-char input)) ; discard.
-                             (t nil))))))
+                       (cond
+                         ((null next)
+                          (cerror "Finish to consume a list of declarations."
+                                  'end-of-css
+                                  :stream input)
+                          (loop-finish))
+                         ((char= #\; next) (read-char input)) ; discard.
+                         (t nil))))))
 
 ;;;; READERS
 ;;;; 4.3.1. Consume a token
@@ -922,16 +952,18 @@
                    :block (let ((block? (read-char input nil nil)))
                             (cond
                               ((null block?)
-                               (signal 'end-of-css :stream input))
+                               (cerror "Use NIL as block." 'end-of-css
+                                       :stream input))
                               ((char= #\; block?) nil)
                               ((char= #\{ block?)
                                (consume-a-simple-block #\} input))
                               (t
                                (unread-char block? input)
-                               (signal 'simple-parse-error
+                               (cerror "Use NIL as block." 'simple-parse-error
                                        :format-control "Missing block."))))))
     (t
-     (signal 'simple-parse-error :format-control "Missing at keyword name.")
+     (cerror "Return at keyword token with \"@\"." 'simple-parse-error
+             :format-control "Missing at keyword name.")
      (make-at-keyword-token :value (string at-sign)))))
 
 (declaim
@@ -942,7 +974,7 @@
 (defun |!-reader| (input !)
   (handler-case (consume-a-name input)
     (name-parse-error (c)
-      (signal c)
+      (cerror "Return delim token." c)
       (make-delim-token :value (string !)))
     (:no-error (name)
       (if (equal "important" name)
