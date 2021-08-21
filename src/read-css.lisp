@@ -6,79 +6,79 @@
   (:export #:read-css #:read-style #:read-style-from-string)
   #| API for heavy users. |#
   (:export ;;;; Conditions.
-           #:css-parse-error
-           #:end-of-css
-           #:invalid-escape
-           #:simple-parse-error
-           #:name-parse-error
+           "CSS-PARSE-ERROR"
+           "END-OF-CSS"
+           "INVALID-ESCAPE"
+           "SIMPLE-PARSE-ERROR"
+           "NAME-PARSE-ERROR"
            ;; Slot reader.
-           #:parse-error-character)
+           "PARSE-ERROR-CHARACTER")
   (:export ;;;; Style rules.
            ;;; QUALIFIED-RULE
-           #:qualified-rule ; type name.
+           "QUALIFIED-RULE" ; type name.
            ;; accessors.
-           #:qualified-rule-selectors
-           #:qualified-rule-declarations
+           "QUALIFIED-RULE-SELECTORS"
+           "QUALIFIED-RULE-DECLARATIONS"
            ;;; AT-RULE
-           #:at-rule
+           "AT-RULE"
            ;; accessors
-           #:at-rule-name
-           #:at-rule-components
-           #:at-rule-block)
+           "AT-RULE-NAME"
+           "AT-RULE-COMPONENTS"
+           "AT-RULE-BLOCK")
   (:export ;;;; CSS-DECLARATION
-           #:css-declaration ; type name.
+           "CSS-DECLARATION" ; type name.
            ;; Slot accessors.
-           #:css-declaration-name
-           #:css-declaration-importantp
-           #:css-declaration-list)
+           "CSS-DECLARATION-NAME"
+           "CSS-DECLARATION-IMPORTANTP"
+           "CSS-DECLARATION-LIST")
   (:export ;;;; Tokens.
-           #:css-token ; as super-class
-           #:string-token
-           #:bad-string-token
-           #:number-token
-           #:percentage-token
-           #:dimension-token
-           #:url-token
-           #:bad-url-token
-           #:function-token
-           #:important-token
-           #:delim-token
-           #:at-keyword-token
+           "CSS-TOKEN" ; as super-class
+           "STRING-TOKEN"
+           "BAD-STRING-TOKEN"
+           "NUMBER-TOKEN"
+           "PERCENTAGE-TOKEN"
+           "DIMENSION-TOKEN"
+           "URL-TOKEN"
+           "BAD-URL-TOKEN"
+           "FUNCTION-TOKEN"
+           "IMPORTANT-TOKEN"
+           "DELIM-TOKEN"
+           "AT-KEYWORD-TOKEN"
            ;; Slot accessors.
-           #:string-token-value
-           #:number-token-value
-           #:dimension-token-unit
-           #:function-token-name
-           #:function-token-args)
+           "STRING-TOKEN-VALUE"
+           "NUMBER-TOKEN-VALUE"
+           "DIMENSION-TOKEN-UNIT"
+           "FUNCTION-TOKEN-NAME"
+           "FUNCTION-TOKEN-ARGS")
   (:export ;;;; READTABLE-NAME
-           #:css-readtable)
+           "CSS-READTABLE")
   #| API for hackers. |#
   (:export ;;;; CONSUMERS.
-           #:consume-a-declaration
-           #:consume-a-function
-           #:consume-a-list-of-declarations
-           #:consume-a-name
-           #:consume-a-number
-           #:consume-a-numeric-token
-           #:consume-a-simple-block
-           #:consume-a-string-token
-           #:consume-a-url-token
-           #:consume-an-escaped-code-point
-           #:consume-an-ident-like-token
-           #:consume-comments
-           #:consume-components
-           #:consume-selectors
-           #:consume-the-remnants-of-a-bad-url)
+           "CONSUME-A-DECLARATION"
+           "CONSUME-A-FUNCTION"
+           "CONSUME-A-LIST-OF-DECLARATIONS"
+           "CONSUME-A-NAME"
+           "CONSUME-A-NUMBER"
+           "CONSUME-A-NUMERIC-TOKEN"
+           "CONSUME-A-SIMPLE-BLOCK"
+           "CONSUME-A-STRING-TOKEN"
+           "CONSUME-A-URL-TOKEN"
+           "CONSUME-AN-ESCAPED-CODE-POINT"
+           "CONSUME-AN-IDENT-LIKE-TOKEN"
+           "CONSUME-COMMENTS"
+           "CONSUME-COMPONENTS"
+           "CONSUME-SELECTORS"
+           "CONSUME-THE-REMNANTS-OF-A-BAD-URL")
   (:export ;;;; Predicates.
-           #:non-ascii-code-point-p
-           #:name-start-code-point-p
-           #:name-code-point-p
-           #:non-printable-code-point-p
-           #:white-space-p
-           #:surrogatep
-           #:valid-escape-p
-           #:start-a-number-p
-           #:start-an-identifier-p))
+           "NON-ASCII-CODE-POINT-P"
+           "NAME-START-CODE-POINT-P"
+           "NAME-CODE-POINT-P"
+           "NON-PRINTABLE-CODE-POINT-P"
+           "WHITE-SPACE-P"
+           "SURROGATEP"
+           "VALID-ESCAPE-P"
+           "START-A-NUMBER-P"
+           "START-AN-IDENTIFIER-P"))
 
 (in-package :read-css)
 

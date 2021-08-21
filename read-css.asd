@@ -2,7 +2,7 @@
 (in-package :asdf)
 (defsystem "read-css"
   :version
-  "1.5.1"
+  "1.5.2"
   :depends-on
   (
    "named-readtables"   ; Readtable manager.
