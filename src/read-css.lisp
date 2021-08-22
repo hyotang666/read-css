@@ -1162,7 +1162,13 @@
                    (error 'simple-parse-error
                           :format-control "Missing declarations after ~S."
                           :format-arguments (list selectors)))))
-            (t (internal-logical-error "NIY ~S" char))))))))
+            (t
+             (cerror (format nil "Consume ~S and retry." char)
+                     'simple-parse-error
+                     :format-control "Unknown to read ~S."
+                     :format-arguments (list char))
+             (read-char input)
+             (read-style input eof-error-p eof-value recursive-p))))))))
 
 ;;;; READ-STYLE-FROM-STRING
 
