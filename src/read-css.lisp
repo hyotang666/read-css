@@ -337,7 +337,7 @@
  | [ ] 5.4.3  Consume a qualified rule
  | [ ] 5.4.4  Consume a list of declarations
  | [ ] 5.4.5  Consume a declaration
- | [ ] 5.4.6  Consume a component value
+ | [*] 5.4.6  Consume a component value
  | [ ] 5.4.7  Consume a simple block
  | [ ] 5.4.8  Consume a function
  |#
@@ -660,6 +660,15 @@
         (make-bad-url-token :value string)
         (make-url-token :value string))))
 
+;;;; 5.4.6. Consume a component value
+;;; https://www.w3.org/TR/css-syntax-3/#consume-a-component-value
+
+(defun consume-a-component-value
+       (&optional (input *standard-input*)
+        &aux (input (ensure-input-stream input)))
+  (let ((*readtable* (named-readtables:find-readtable 'component-readtable)))
+    (read-style input t t t)))
+
 ;;;; 5.4.7. Consume a simple block
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-a-simple-block
 
@@ -685,7 +694,7 @@
           :collect nil ; as null component.
           :and :do (read-char input)
         :else
-          :collect (handler-case (read-style input t t t)
+          :collect (handler-case (consume-a-component-value input)
                      (name-parse-error (condition)
                        (if (find (parse-error-character condition) "=+-*/")
                            (make-delim-token :value (string (read-char input)))
@@ -1089,6 +1098,14 @@
                  :format-control "Unknown syntax !~A."
                  :format-arguments (list name))))))
 
+(defun |(-reader| (input open)
+  (declare (ignore open))
+  (consume-a-simple-block #\) input))
+
+(defun |[-reader| (input open)
+  (declare (ignore open))
+  (consume-a-simple-block #\] input))
+
 ;;;; CSS-READTABLE
 #| https://www.w3.org/TR/css-syntax-3/#parser-diagrams
  |
@@ -1112,6 +1129,11 @@
   (:macro-char #\{ '|{-reader|)
   (:macro-char #\# '|#rgb-reader|)
   (:macro-char #\! '|!-reader|))
+
+(named-readtables:defreadtable component-readtable
+  (:merge css-non-toplevel)
+  (:macro-char #\( '|(-reader|)
+  (:macro-char #\[ '|[-reader|))
 
 ;;;; READ-STYLE
 
