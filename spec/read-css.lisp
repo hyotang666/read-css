@@ -42,12 +42,22 @@
 ;;;; Notes:
 
 ;;;; Exceptional-Situations:
+#?(with-input-from-string (in "missing \\*\\/")
+    (consume-comments in))
+:signals end-of-file
 
 ;;;; Tests:
 #?(with-input-from-string (in " comment */a")
     (values (consume-comments in)
 	    (read-char in)))
 :values (nil #\a)
+
+; Return (values)
+#?(with-input-from-string (in "comment */")
+    (multiple-value-call (lambda (&rest returned)
+			   (null returned))
+      (consume-comments in)))
+=> T
 
 (requirements-about CONSUME-AN-ESCAPED-CODE-POINT :doc-type function)
 
