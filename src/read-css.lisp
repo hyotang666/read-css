@@ -666,8 +666,7 @@
 (defun consume-a-component-value
        (&optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
-  (let ((*readtable* (named-readtables:find-readtable 'component-readtable)))
-    (read-style input t t t)))
+  (read-style input t t (named-readtables:find-readtable 'component-readtable)))
 
 ;;;; 5.4.7. Consume a simple block
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-a-simple-block
@@ -824,7 +823,7 @@
 (defun consume-components (end-chars input)
   ;; NOTE: END-CHAR is not consumed.
   (labels ((style ()
-             (handler-case (read-style input t t t)
+             (handler-case (consume-a-component-value input)
                (name-parse-error (condition)
                  (let ((c (parse-error-character condition)))
                    (if (find c "+")
@@ -869,12 +868,13 @@
 (defstruct (important-token (:include css-token)))
 
 (declaim
- (ftype (function (&optional (or boolean stream))
+ (ftype (function (character &optional (or boolean stream))
          (values (or null css-declaration) &optional))
         consume-a-declaration))
 
 (defun consume-a-declaration
-       (&optional (input *standard-input*)
+       (end-char
+        &optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
   (let ((name (read-style input t t t))
         (colon? (peek-char t input nil nil))
@@ -894,14 +894,16 @@
                                           decls))
                                       (progn
                                        (read-char input) ; discard colon.
-                                       (consume-components ";}" input)))
+                                       (consume-components
+                                         (uiop:strcat #\; end-char) input)))
                               :importantp important?))))
 
 ;;;; 5.4.4. Consume a list of declarations
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-list-of-declarations
 
 (defun consume-a-list-of-declarations
-       (&optional (input *standard-input*)
+       (end-char
+        &optional (input *standard-input*)
         &aux (input (ensure-input-stream input)))
   (uiop:while-collecting (acc)
     (loop :for c = (peek-char t input nil nil)
@@ -909,20 +911,22 @@
             :do (cerror "Finish to consume a list of declarations." 'end-of-css
                         :stream input)
                 (loop-finish)
-          :else :if (char= #\} c)
+          :else :if (char= end-char c)
             :do (read-char input)
                 (loop-finish)
           :else :if (char= #\@ c)
             :do (acc (read-style input t t t))
           :else
-            :do (handler-case (consume-a-declaration input)
+            :do (handler-case (consume-a-declaration end-char input)
                   (name-parse-error (c)
-                    (unless (eql #\} (parse-error-character c))
+                    (unless (eql end-char (parse-error-character c))
                       (progn
                        (cerror "Ignore declaration." c)
                        (warn "Discard ~S"
                              (core-reader:read-string-till
-                               (lambda (x) (find x ";}")) input)))))
+                               (lambda (x)
+                                 (or (char= x #\;) (char= x end-char)))
+                               input)))))
                   (:no-error (decl)
                     (acc decl)))
             :and :do (let ((next (peek-char t input nil nil)))
@@ -992,7 +996,7 @@
 
 (defun |{-reader| (input open-paren)
   (declare (ignore open-paren))
-  (consume-a-simple-block #\} input))
+  (consume-a-list-of-declarations #\} input))
 
 (declaim
  (ftype (function (stream character) (values cl-colors2:rgb &optional))
@@ -1100,11 +1104,11 @@
 
 (defun |(-reader| (input open)
   (declare (ignore open))
-  (consume-a-simple-block #\) input))
+  (consume-a-list-of-declarations #\) input))
 
 (defun |[-reader| (input open)
   (declare (ignore open))
-  (consume-a-simple-block #\] input))
+  (consume-a-list-of-declarations #\] input))
 
 ;;;; CSS-READTABLE
 #| https://www.w3.org/TR/css-syntax-3/#parser-diagrams
@@ -1138,7 +1142,8 @@
 ;;;; READ-STYLE
 
 (declaim
- (ftype (function (&optional (or boolean stream) boolean t boolean)
+ (ftype (function
+         (&optional (or boolean stream) boolean t (or boolean readtable))
          (values t &optional))
         read-style))
 
@@ -1149,9 +1154,10 @@
   "Read one css style from specified input."
   (let ((*readtable*
          (named-readtables:find-readtable
-           (if recursive-p
-               'css-non-toplevel
-               'css-readtable))))
+           (etypecase recursive-p
+             (readtable recursive-p)
+             (null 'css-readtable)
+             ((eql t) 'css-non-toplevel)))))
     (handler-case (peek-char t input) ; to discard white spaces.
       (end-of-file (c)
         (if eof-error-p
@@ -1181,7 +1187,7 @@
                     (read-char input) ; discard #\{
                     (make-qualified-rule :selectors selectors
                                          :declarations (consume-a-list-of-declarations
-                                                         input)))
+                                                         #\} input)))
                    (error 'simple-parse-error
                           :format-control "Missing declarations after ~S."
                           :format-arguments (list selectors)))))

@@ -712,6 +712,18 @@
 			      :value 6
 			      :unit "px"))))))
 
+#?(with-input-from-string (in "screen and (max-width: 991px){")
+    (let ((in (read-css::ensure-input-stream in)))
+      (consume-components ";{" in)))
+:satisfies (lambda (result)
+	     (& (equalp result
+			`(("screen" "and"
+			   (,(read-css::make-css-declaration
+			       :name "max-width"
+			       :list `((,(read-css::make-dimension-token
+					   :value 991
+					   :unit "px"))))))))))
+
 (requirements-about CONSUME-SELECTORS :doc-type function)
 
 ;;;; Description:
@@ -905,7 +917,7 @@
 #?(with-input-from-string (in "padding-top:6px;")
     (let ((*readtable* (named-readtables::find-readtable 'read-css::css-non-toplevel))
 	  (in (read-css::ensure-input-stream in)))
-      (consume-a-declaration in)))
+      (consume-a-declaration #\} in)))
 :satisfies (lambda (decl)
 	     (& (equalp decl
 			(read-css::make-css-declaration
@@ -938,7 +950,7 @@
 ;;;; Tests:
 #?(with-input-from-string (in "padding-top:6px;}a")
     (let ((in (read-css::ensure-input-stream in)))
-      (values (consume-a-list-of-declarations in)
+      (values (consume-a-list-of-declarations #\} in)
 	      (read-char in))))
 :multiple-value-satisfies
 (lambda (list char)
@@ -949,7 +961,7 @@
      (eql char #\a)))
 
 #?(with-input-from-string (in " background: #ffffe2; border-radius:10px;}")
-    (consume-a-list-of-declarations in))
+    (consume-a-list-of-declarations #\} in))
 :satisfies (lambda (x)
 	     (& (equalp x `(,(read-css::make-css-declaration
 			       :name "background"
@@ -961,7 +973,7 @@
 					    :unit "px"))))))))
 
 #?(with-input-from-string (in "background-size: 200px auto, 44px 76px;}")
-    (consume-a-list-of-declarations in))
+    (consume-a-list-of-declarations #\} in))
 :satisfies (lambda (x)
 	     (& (equalp x
 			`(,(read-css::make-css-declaration
@@ -978,7 +990,7 @@
 					  :unit "px"))))))))
 
 #?(with-input-from-string (in "/* overflow:auto; */height:250px;position:relative;}")
-    (consume-a-list-of-declarations in))
+    (consume-a-list-of-declarations #\} in))
 :satisfies (lambda (x)
 	     (& (equalp x
 			`(,(read-css::make-css-declaration
@@ -991,7 +1003,7 @@
 			      :list `(("relative")))))))
 
 #?(with-input-from-string (in " font-size:87.5%; }")
-    (consume-a-list-of-declarations in))
+    (consume-a-list-of-declarations #\} in))
 :satisfies (lambda (x)
 	     (& (equalp x
 			(list (read-css::make-css-declaration
@@ -1000,7 +1012,7 @@
 					    :value 87.5))))))))
 
 #?(with-input-from-string (in "opacity:0!important;}")
-    (consume-a-list-of-declarations in))
+    (consume-a-list-of-declarations #\} in))
 :satisfies
 (lambda (x)
   (& (equalp x (list (read-css::make-css-declaration
@@ -1009,19 +1021,19 @@
 		       :list `((,(read-css::make-number-token :value 0))))))))
 
 #?(with-input-from-string (in "filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#b3b3b3',GradientType=0 ); }")
-    (consume-a-list-of-declarations in))
+    (consume-a-list-of-declarations #\} in))
 :signals parse-error ; duplicated colon.
 ,:with-restarts continue
 
 #?(with-input-from-string (in "filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#b3b3b3',GradientType=0 ); }")
     (handler-bind ((parse-error #'continue))
-      (values (consume-a-list-of-declarations in)
+      (values (consume-a-list-of-declarations #\} in)
 	      (read-char in nil nil))))
 :values (nil nil)
 ,:ignore-signals warning
 
 #?(with-input-from-string (in "top: calc(100% + 7px);}")
-    (consume-a-list-of-declarations in))
+    (consume-a-list-of-declarations #\} in))
 :satisfies
 (lambda (x)
   (& (equalp x
@@ -1036,6 +1048,16 @@
 					     (read-css::make-dimension-token
 					       :value 7
 					       :unit "px"))))))))))
+
+#?(with-input-from-string (in "max-width: 991px}")
+    (consume-a-list-of-declarations #\} in))
+:satisfies (lambda (token)
+	     (& (equalp token
+			(list (read-css::make-css-declaration
+				:name "max-width"
+				:list `((,(read-css::make-dimension-token
+					    :value 991
+					    :unit "px"))))))))
 
 (requirements-about |#rgb-reader| :doc-type function)
 
@@ -1285,6 +1307,19 @@
 					    :args (list (read-css::make-string-token
 							  :value "http://function/style/url")))))
 			  :block nil))))
+
+#?(with-input-from-string (in " @media screen and (max-width: 991px) { } ")
+    (read-style in))
+:satisfies (lambda (rule)
+	     (& (equalp rule
+			(read-css::make-at-rule
+			  :name "media"
+			  :components `(("screen" "and"
+					 (,(read-css::make-css-declaration
+					     :name "max-width"
+					     :list `((,(read-css::make-dimension-token
+							 :value 991
+							 :unit "px")))))))))))
 
 (requirements-about READ-CSS :doc-type function)
 
