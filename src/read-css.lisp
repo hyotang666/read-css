@@ -740,9 +740,8 @@
        (when next
          (unread-char next input)
          (when (equal "" name)
-           (error 'simple-parse-error
-                  :format-control "Could not parse ident like token. ~S"
-                  :format-arguments (list next))))
+           (internal-logical-error
+             "CONSUME-A-NAME must not return empty name.")))
        name))))
 
 ;;;; 4.3.5. Consume a string token
