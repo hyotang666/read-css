@@ -59,6 +59,40 @@
       (consume-comments in)))
 => T
 
+(requirements-about START-A-NUMBER-P :doc-type function)
+
+;;;; Description:
+
+#+syntax (START-A-NUMBER-P input) ; => result
+
+;;;; Arguments and Values:
+
+; input := 
+
+; result := 
+
+;;;; Affected By:
+
+;;;; Side-Effects:
+
+;;;; Notes:
+
+;;;; Exceptional-Situations:
+
+;;;; Tests:
+#?(with-input-from-string (in "+1") (start-a-number-p in)) => T
+#?(with-input-from-string (in "-1") (start-a-number-p in)) => T
+#?(with-input-from-string (in "+") (start-a-number-p in)) => NIL
+#?(with-input-from-string (in "-") (start-a-number-p in)) => NIL
+#?(with-input-from-string (in "+.1") (start-a-number-p in)) => T
+#?(with-input-from-string (in "-.1") (start-a-number-p in)) => T
+#?(with-input-from-string (in "+.N") (start-a-number-p in)) => NIL
+#?(with-input-from-string (in "-.N") (start-a-number-p in)) => NIL
+#?(with-input-from-string (in ".1") (start-a-number-p in)) => T
+#?(with-input-from-string (in ".N") (start-a-number-p in)) => NIL
+#?(with-input-from-string (in "1") (start-a-number-p in)) => T
+#?(with-input-from-string (in "N") (start-a-number-p in)) => NIL
+
 (requirements-about CONSUME-AN-ESCAPED-CODE-POINT :doc-type function)
 
 ;;;; Description:
