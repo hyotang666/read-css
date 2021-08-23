@@ -361,6 +361,8 @@
       (values (consume-a-number in) (read-char in))))
 :values (1 #\space)
 
+#?(with-input-from-string (in "-1-2") (consume-a-number in)) => -1
+
 (requirements-about CONSUME-A-URL-TOKEN :doc-type function)
 
 ;;;; Description:
@@ -474,6 +476,16 @@
 	     (& (equalp result (read-css::make-dimension-token
 				 :value 1.5
 				 :unit "em"))))
+
+#?(with-input-from-string (in "1.5 em") (consume-a-numeric-token in))
+:satisfies (lambda (result)
+	     (& (equalp result (read-css::make-number-token
+				 :value 1.5))))
+
+#?(with-input-from-string (in "-1-2") (consume-a-numeric-token in))
+:satisfies (lambda (result)
+	     (& (equalp result (read-css::make-number-token
+				 :value -1))))
 
 (requirements-about CONSUME-A-STRING-TOKEN :doc-type function)
 

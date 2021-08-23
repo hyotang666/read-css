@@ -2,7 +2,7 @@
 (in-package :asdf)
 (defsystem "read-css.test"
   :version
-  "0.18.2"
+  "0.18.3"
   :depends-on
   (:jingoh "read-css")
   :components
