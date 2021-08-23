@@ -1074,8 +1074,7 @@
                                (cerror "Use NIL as block." 'end-of-css
                                        :stream input))
                               ((char= #\; block?) nil)
-                              ((char= #\{ block?)
-                               (consume-a-simple-block #\} input))
+                              ((char= #\{ block?) (read-css input #\}))
                               (t
                                (unread-char block? input)
                                (cerror "Use NIL as block." 'simple-parse-error
@@ -1225,18 +1224,25 @@
 ;;;; READ-CSS
 
 (declaim
- (ftype (function (&optional (or boolean stream))
+ (ftype (function (&optional (or boolean stream) (or null character))
          (values list ; of-type style
                  &optional))
         read-css))
 
-(let ((end-of-file '#:end-of-file))
-  (defun read-css
-         (&optional (input *standard-input*)
-          &aux (input (ensure-input-stream input)))
-    "Read all style rules from specified stream."
-    (loop :for style = (read-style input nil end-of-file)
-          :if (eq style end-of-file)
-            :do (loop-finish)
+(defun read-css
+       (&optional (input *standard-input*) end-char
+        &aux (input (ensure-input-stream input)))
+  "Read all style rules from specified stream."
+  (loop :for c = (peek-char t input nil nil)
+        :if (null c)
+          :if end-char
+            :do (cerror "Finish to consume a simple block." 'end-of-css
+                        :stream input)
+                (loop-finish)
           :else
-            :collect style)))
+            :do (loop-finish)
+        :else :if (and end-char (eql c end-char))
+          :do (read-char input)
+              (loop-finish)
+        :else
+          :collect (read-style input)))
