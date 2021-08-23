@@ -96,6 +96,13 @@
 	      (read-char in))))
 :values (t #\\)
 
+#?(with-input-from-string (in "-N") (start-an-identifier-p in)) => T
+#?(with-input-from-string (in "--") (start-an-identifier-p in)) => T
+#?(with-input-from-string (in "-\\N") (start-an-identifier-p in)) => T
+#?(with-input-from-string (in "-0") (start-an-identifier-p in)) => NIL
+#?(with-input-from-string (in "-$") (start-an-identifier-p in)) => NIL
+#?(with-input-from-string (in "$") (start-an-identifier-p in)) => NIL
+
 (requirements-about CONSUME-COMMENTS :doc-type function)
 
 ;;;; Description:
