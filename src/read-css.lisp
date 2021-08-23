@@ -615,7 +615,7 @@
   ;; A quoted value, like url("foo"), is parsed as a <function-token>.
   ;; Consume an ident-like token automatically handles this distinction;
   ;; this algorithm shouldn’t be called directly otherwise.
-  (peek-char t input) ; to discard white spaces.
+  (peek-char t input nil nil) ; to discard white spaces.
   (let* ((bad-url-p)
          (string
           (with-output-to-string (*standard-output*)

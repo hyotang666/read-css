@@ -425,6 +425,13 @@
 ;;;; Exceptional-Situations:
 
 ;;;; Tests:
+#?(with-input-from-string (in "    https://example.com/images/myImg.jpg)")
+    (consume-a-url-token in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::url-token)
+		(equal "https://example.com/images/myImg.jpg"
+		       (read-css::url-token-value result))))
+
 #?(with-input-from-string (in "https://example.com/images/myImg.jpg)")
     (consume-a-url-token in))
 :satisfies (lambda (result)
@@ -451,6 +458,77 @@
 #?(with-input-from-string (in "'star.gif')")
     (consume-a-url-token in))
 :signals read-css::css-parse-error
+
+; Case empty url.
+#?(with-input-from-string (in ")")
+    (consume-a-url-token in))
+:satisfies (lambda (result)
+	     (& (equalp result (read-css::make-url-token :value ""))))
+
+; Case end-of-file.
+#?(with-input-from-string (in "") (consume-a-url-token in))
+:signals end-of-file
+,:with-restarts continue
+
+; Case parse error.
+#?(with-input-from-string (in "\"") (consume-a-url-token in))
+:signals parse-error
+,:with-restarts continue
+
+#?(with-input-from-string (in "'") (consume-a-url-token in))
+:signals parse-error
+,:with-restarts continue
+
+#?(with-input-from-string (in "(") (consume-a-url-token in))
+:signals parse-error
+,:with-restarts continue
+
+#?(with-input-from-string (in (format nil "\\~%")) (consume-a-url-token in))
+:signals parse-error
+,:with-restarts continue
+
+#?(loop :for c :in read-css::+non-printable-code-point+
+	:always (handler-case (with-input-from-string (in (string c))
+				(consume-a-url-token in))
+		  (parse-error () t)
+		  (:no-error (token)
+                    (declare (ignore token))
+		    nil)))
+=> T
+
+#?(handler-bind ((end-of-file #'continue))
+    (with-input-from-string (in "") (consume-a-url-token in)))
+:satisfies (lambda (result)
+	     (& (equalp result
+			(read-css::make-url-token
+			  :value ""))))
+
+#?(handler-bind ((parse-error #'continue))
+    (with-input-from-string (in "\"") (consume-a-url-token in)))
+:satisfies (lambda (result)
+	     (& (equalp result
+			(read-css::make-bad-url-token
+			  :value ""))))
+
+#?(handler-bind ((parse-error #'continue))
+    (with-input-from-string (in "'") (consume-a-url-token in)))
+:satisfies (lambda (result)
+	     (& (equalp result
+			(read-css::make-bad-url-token
+			  :value ""))))
+
+#?(handler-bind ((parse-error #'continue))
+    (with-input-from-string (in "(") (consume-a-url-token in)))
+:satisfies (lambda (result)
+	     (& (equalp result
+			(read-css::make-bad-url-token
+			  :value ""))))
+
+#?(with-input-from-string (in "\\26)") (consume-a-url-token in))
+:satisfies (lambda (result)
+	     (& (equalp result
+			(read-css::make-url-token
+			  :value "&"))))
 
 (requirements-about CONSUME-A-STRING-TOKEN :doc-type function)
 
