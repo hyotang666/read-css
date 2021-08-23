@@ -1048,8 +1048,11 @@
   (cond (*print-readably* (call-next-method))
         (*print-escape* (call-next-method))
         (t
-         (funcall (formatter "@~A ~{~W~^, ~}~@[~_~W~];~_") stream
-                  (at-rule-name a) (at-rule-components a) (at-rule-block a)))))
+         (funcall
+           (formatter
+            "~<@~A ~{~{~W~^ ~}~^, ~}~:[;~;~:* {~4I~_~{~W~^ ~_~}~I~_}~]~:>")
+           stream
+           (list (at-rule-name a) (at-rule-components a) (at-rule-block a))))))
 
 (defstruct (at-keyword-token (:include string-token)))
 
