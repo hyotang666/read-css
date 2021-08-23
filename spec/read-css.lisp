@@ -266,41 +266,6 @@
 => "name-with-white-spaces"
 ,:test equal
 
-(requirements-about CONSUME-SELECTORS :doc-type function)
-
-;;;; Description:
-
-#+syntax (CONSUME-SELECTORS input first-char) ; => result
-
-;;;; Arguments and Values:
-
-; input := css-input-stream
-
-; first-char := character
-
-; result := list
-
-;;;; Affected By:
-
-;;;; Side-Effects:
-
-;;;; Notes:
-
-;;;; Exceptional-Situations:
-
-;;;; Tests:
-#?(with-input-from-string (in "commentBox{")
-    (let ((in (read-css::ensure-input-stream in)))
-      (values (consume-selectors in #\.)
-	      (read-char in))))
-:values ((".commentBox") #\{)
-
-#?(with-input-from-string (in "{")
-    (let ((in (read-css::ensure-input-stream in)))
-      (values (consume-selectors in #\p)
-	      (read-char in))))
-:values (("p") #\{)
-
 (requirements-about CONSUME-A-NUMBER :doc-type function)
 
 ;;;; Description:
@@ -362,54 +327,6 @@
 :values (1 #\space)
 
 #?(with-input-from-string (in "-1-2") (consume-a-number in)) => -1
-
-(requirements-about CONSUME-A-URL-TOKEN :doc-type function)
-
-;;;; Description:
-
-#+syntax (CONSUME-A-URL-TOKEN &optional (input *standard-input*)) ; => result
-
-;;;; Arguments and Values:
-
-; input := 
-
-; result := 
-
-;;;; Affected By:
-
-;;;; Side-Effects:
-
-;;;; Notes:
-
-;;;; Exceptional-Situations:
-
-;;;; Tests:
-#?(with-input-from-string (in "https://example.com/images/myImg.jpg)")
-    (consume-a-url-token in))
-:satisfies (lambda (result)
-	     (& (typep result 'read-css::url-token)
-		(equal "https://example.com/images/myImg.jpg"
-		       (read-css::url-token-value result))))
-
-#?(with-input-from-string (in "myFont.woff)")
-    (consume-a-url-token in))
-:satisfies (lambda (result)
-	     (& (typep result 'read-css::url-token)
-		(equal "myFont.woff" (read-css::url-token-value result))))
-
-#?(with-input-from-string (in "#IDofSVGpath)")
-    (consume-a-url-token in))
-:satisfies (lambda (result)
-	     (& (typep result 'read-css::url-token)
-		(equal "#IDofSVGpath" (read-css::url-token-value result))))
-
-; Does not handle quoted string.
-#?(with-input-from-string (in "\"star.gif\")")
-    (consume-a-url-token in))
-:signals read-css::css-parse-error
-#?(with-input-from-string (in "'star.gif')")
-    (consume-a-url-token in))
-:signals read-css::css-parse-error
 
 (requirements-about CONSUME-A-NUMERIC-TOKEN :doc-type function)
 
@@ -486,6 +403,54 @@
 :satisfies (lambda (result)
 	     (& (equalp result (read-css::make-number-token
 				 :value -1))))
+
+(requirements-about CONSUME-A-URL-TOKEN :doc-type function)
+
+;;;; Description:
+
+#+syntax (CONSUME-A-URL-TOKEN &optional (input *standard-input*)) ; => result
+
+;;;; Arguments and Values:
+
+; input := 
+
+; result := 
+
+;;;; Affected By:
+
+;;;; Side-Effects:
+
+;;;; Notes:
+
+;;;; Exceptional-Situations:
+
+;;;; Tests:
+#?(with-input-from-string (in "https://example.com/images/myImg.jpg)")
+    (consume-a-url-token in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::url-token)
+		(equal "https://example.com/images/myImg.jpg"
+		       (read-css::url-token-value result))))
+
+#?(with-input-from-string (in "myFont.woff)")
+    (consume-a-url-token in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::url-token)
+		(equal "myFont.woff" (read-css::url-token-value result))))
+
+#?(with-input-from-string (in "#IDofSVGpath)")
+    (consume-a-url-token in))
+:satisfies (lambda (result)
+	     (& (typep result 'read-css::url-token)
+		(equal "#IDofSVGpath" (read-css::url-token-value result))))
+
+; Does not handle quoted string.
+#?(with-input-from-string (in "\"star.gif\")")
+    (consume-a-url-token in))
+:signals read-css::css-parse-error
+#?(with-input-from-string (in "'star.gif')")
+    (consume-a-url-token in))
+:signals read-css::css-parse-error
 
 (requirements-about CONSUME-A-STRING-TOKEN :doc-type function)
 
@@ -668,6 +633,41 @@
 			`((,(read-css::make-dimension-token
 			      :value 6
 			      :unit "px"))))))
+
+(requirements-about CONSUME-SELECTORS :doc-type function)
+
+;;;; Description:
+
+#+syntax (CONSUME-SELECTORS input first-char) ; => result
+
+;;;; Arguments and Values:
+
+; input := css-input-stream
+
+; first-char := character
+
+; result := list
+
+;;;; Affected By:
+
+;;;; Side-Effects:
+
+;;;; Notes:
+
+;;;; Exceptional-Situations:
+
+;;;; Tests:
+#?(with-input-from-string (in "commentBox{")
+    (let ((in (read-css::ensure-input-stream in)))
+      (values (consume-selectors in #\.)
+	      (read-char in))))
+:values ((".commentBox") #\{)
+
+#?(with-input-from-string (in "{")
+    (let ((in (read-css::ensure-input-stream in)))
+      (values (consume-selectors in #\p)
+	      (read-char in))))
+:values (("p") #\{)
 
 (requirements-about CONSUME-A-SIMPLE-BLOCK :doc-type function)
 
