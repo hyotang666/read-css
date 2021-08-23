@@ -1063,7 +1063,7 @@
   (cond
     ((start-an-identifier-p input)
      (make-at-rule :name (consume-a-name input)
-                   :components (consume-a-simple-block nil input)
+                   :components (consume-components ";{" input)
                    :block (let ((block? (read-char input nil nil)))
                             (cond
                               ((null block?)

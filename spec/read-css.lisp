@@ -1274,6 +1274,18 @@
 				       :list (list (list (read-css::make-percentage-token
 							   :value 74)))))))))
 
+#?(with-input-from-string (in "@import url(\"http://function/style/url\");")
+    (read-style in))
+:satisfies (lambda (rule)
+	     (& (equalp rule
+			(read-css::make-at-rule
+			  :name "import"
+			  :components `((,(read-css::make-function-token
+					    :name "url"
+					    :args (list (read-css::make-string-token
+							  :value "http://function/style/url")))))
+			  :block nil))))
+
 (requirements-about READ-CSS :doc-type function)
 
 ;;;; Description:
