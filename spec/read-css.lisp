@@ -23,6 +23,79 @@
 	   (read-char in)))
     => #\a)
 
+(requirements-about START-A-NUMBER-P :doc-type function)
+
+;;;; Description:
+
+#+syntax (START-A-NUMBER-P input) ; => result
+
+;;;; Arguments and Values:
+
+; input := 
+
+; result := 
+
+;;;; Affected By:
+
+;;;; Side-Effects:
+
+;;;; Notes:
+
+;;;; Exceptional-Situations:
+
+;;;; Tests:
+#?(with-input-from-string (in "+1") (start-a-number-p in)) => T
+#?(with-input-from-string (in "-1") (start-a-number-p in)) => T
+#?(with-input-from-string (in "+") (start-a-number-p in)) => NIL
+#?(with-input-from-string (in "-") (start-a-number-p in)) => NIL
+#?(with-input-from-string (in "+.1") (start-a-number-p in)) => T
+#?(with-input-from-string (in "-.1") (start-a-number-p in)) => T
+#?(with-input-from-string (in "+.N") (start-a-number-p in)) => NIL
+#?(with-input-from-string (in "-.N") (start-a-number-p in)) => NIL
+#?(with-input-from-string (in ".1") (start-a-number-p in)) => T
+#?(with-input-from-string (in ".N") (start-a-number-p in)) => NIL
+#?(with-input-from-string (in "1") (start-a-number-p in)) => T
+#?(with-input-from-string (in "N") (start-a-number-p in)) => NIL
+
+(requirements-about START-AN-IDENTIFIER-P :doc-type function)
+
+;;;; Description:
+
+#+syntax (START-AN-IDENTIFIER-P input) ; => result
+
+;;;; Arguments and Values:
+
+; input := css-input-stream
+
+; result := boolean
+
+;;;; Affected By:
+
+;;;; Side-Effects:
+
+;;;; Notes:
+
+;;;; Exceptional-Situations:
+
+;;;; Tests:
+#?(with-input-from-string (in "--hoge")
+    (let ((in (read-css::ensure-input-stream in)))
+      (values (start-an-identifier-p in)
+	      (read-char in))))
+:values (t #\-)
+
+#?(with-input-from-string (in "-\\hoge")
+    (let ((in (read-css::ensure-input-stream in)))
+      (values (start-an-identifier-p in)
+	      (read-char in))))
+:values (t #\-)
+
+#?(with-input-from-string (in "\\hoge")
+    (let ((in (read-css::ensure-input-stream in)))
+      (values (start-an-identifier-p in)
+	      (read-char in))))
+:values (t #\\)
+
 (requirements-about CONSUME-COMMENTS :doc-type function)
 
 ;;;; Description:
@@ -58,40 +131,6 @@
 			   (null returned))
       (consume-comments in)))
 => T
-
-(requirements-about START-A-NUMBER-P :doc-type function)
-
-;;;; Description:
-
-#+syntax (START-A-NUMBER-P input) ; => result
-
-;;;; Arguments and Values:
-
-; input := 
-
-; result := 
-
-;;;; Affected By:
-
-;;;; Side-Effects:
-
-;;;; Notes:
-
-;;;; Exceptional-Situations:
-
-;;;; Tests:
-#?(with-input-from-string (in "+1") (start-a-number-p in)) => T
-#?(with-input-from-string (in "-1") (start-a-number-p in)) => T
-#?(with-input-from-string (in "+") (start-a-number-p in)) => NIL
-#?(with-input-from-string (in "-") (start-a-number-p in)) => NIL
-#?(with-input-from-string (in "+.1") (start-a-number-p in)) => T
-#?(with-input-from-string (in "-.1") (start-a-number-p in)) => T
-#?(with-input-from-string (in "+.N") (start-a-number-p in)) => NIL
-#?(with-input-from-string (in "-.N") (start-a-number-p in)) => NIL
-#?(with-input-from-string (in ".1") (start-a-number-p in)) => T
-#?(with-input-from-string (in ".N") (start-a-number-p in)) => NIL
-#?(with-input-from-string (in "1") (start-a-number-p in)) => T
-#?(with-input-from-string (in "N") (start-a-number-p in)) => NIL
 
 (requirements-about CONSUME-AN-ESCAPED-CODE-POINT :doc-type function)
 
@@ -150,45 +189,6 @@
 #?(with-input-from-string (in "26 a") (values (consume-an-escaped-code-point in)
 					      (read-char in nil nil)))
 :values (#\& #\a)
-
-(requirements-about START-AN-IDENTIFIER-P :doc-type function)
-
-;;;; Description:
-
-#+syntax (START-AN-IDENTIFIER-P input) ; => result
-
-;;;; Arguments and Values:
-
-; input := css-input-stream
-
-; result := boolean
-
-;;;; Affected By:
-
-;;;; Side-Effects:
-
-;;;; Notes:
-
-;;;; Exceptional-Situations:
-
-;;;; Tests:
-#?(with-input-from-string (in "--hoge")
-    (let ((in (read-css::ensure-input-stream in)))
-      (values (start-an-identifier-p in)
-	      (read-char in))))
-:values (t #\-)
-
-#?(with-input-from-string (in "-\\hoge")
-    (let ((in (read-css::ensure-input-stream in)))
-      (values (start-an-identifier-p in)
-	      (read-char in))))
-:values (t #\-)
-
-#?(with-input-from-string (in "\\hoge")
-    (let ((in (read-css::ensure-input-stream in)))
-      (values (start-an-identifier-p in)
-	      (read-char in))))
-:values (t #\\)
 
 (requirements-about CONSUME-A-NAME :doc-type function :test equal)
 

@@ -349,6 +349,30 @@
   (let ((c (peek-char nil input nil nil)))
     (cond ((null c) nil) ((find c +newlines+) nil) (t t))))
 
+;;;; 4.3.9. Check if three code points would start an identifier
+;;; https://www.w3.org/TR/css-syntax-3/#would-start-an-identifier
+
+(declaim
+ (ftype (function (input-stream) (values boolean &optional))
+        start-an-identifier-p))
+
+(defun start-an-identifier-p (input)
+  (labels ((check-first ()
+             (unread-protect (first input)
+               (cond ((null first) nil)
+                     ((char= #\- first) (check-second))
+                     ((name-start-code-point-p first) t)
+                     ((char= #\\ first) (valid-escape-p input))
+                     (t nil))))
+           (check-second ()
+             (unread-protect (second input)
+               (cond ((null second) nil)
+                     ((or (name-start-code-point-p second) (char= #\- second))
+                      t)
+                     ((char= #\\ second) (valid-escape-p input))
+                     (t nil)))))
+    (check-first)))
+
 ;;;; 4.3.10. Check if three code points would start a number
 ;;; https://www.w3.org/TR/css-syntax-3/#starts-with-a-number
 
@@ -474,56 +498,6 @@
       (values (read-from-string
                 (with-output-to-string (*standard-output*) (sign?) (dot?)))))))
 
-;;;; 4.3.9. Check if three code points would start an identifier
-;;; https://www.w3.org/TR/css-syntax-3/#would-start-an-identifier
-
-(declaim
- (ftype (function (input-stream) (values boolean &optional))
-        start-an-identifier-p))
-
-(defun start-an-identifier-p (input)
-  (labels ((check-first ()
-             (unread-protect (first input)
-               (cond ((null first) nil)
-                     ((char= #\- first) (check-second))
-                     ((name-start-code-point-p first) t)
-                     ((char= #\\ first) (valid-escape-p input))
-                     (t nil))))
-           (check-second ()
-             (unread-protect (second input)
-               (cond ((null second) nil)
-                     ((or (name-start-code-point-p second) (char= #\- second))
-                      t)
-                     ((char= #\\ second) (valid-escape-p input))
-                     (t nil)))))
-    (check-first)))
-
-;;;; 4.3.11. Consume a name
-;;; https://www.w3.org/TR/css-syntax-3/#consume-name
-
-(declaim
- (ftype (function (&optional (or boolean stream))
-         (values simple-string &optional))
-        consume-a-name))
-
-(defun consume-a-name
-       (&optional (input *standard-input*)
-        &aux (input (ensure-input-stream input)))
-  (peek-char t input nil nil)
-  (let ((name
-         (with-output-to-string (*standard-output*)
-           (core-reader:do-stream (c input nil nil)
-             (cond ((name-code-point-p c) (write-char c))
-                   ((and (char= #\\ c) (valid-escape-p input))
-                    (write-char (consume-an-escaped-code-point input)))
-                   (t
-                    (unread-char c input)
-                    (return)))))))
-    (if (equal "" name)
-        (error 'name-parse-error
-               :character (peek-char nil input nil 'end-of-file))
-        name)))
-
 ;;;; 4.3.3. Consume a numeric token
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-numeric-token
 
@@ -560,6 +534,32 @@
            (read-char input) ; discard %.
            (make-percentage-token :value number))
           (t (make-number-token :value number)))))
+
+;;;; 4.3.11. Consume a name
+;;; https://www.w3.org/TR/css-syntax-3/#consume-name
+
+(declaim
+ (ftype (function (&optional (or boolean stream))
+         (values simple-string &optional))
+        consume-a-name))
+
+(defun consume-a-name
+       (&optional (input *standard-input*)
+        &aux (input (ensure-input-stream input)))
+  (peek-char t input nil nil)
+  (let ((name
+         (with-output-to-string (*standard-output*)
+           (core-reader:do-stream (c input nil nil)
+             (cond ((name-code-point-p c) (write-char c))
+                   ((and (char= #\\ c) (valid-escape-p input))
+                    (write-char (consume-an-escaped-code-point input)))
+                   (t
+                    (unread-char c input)
+                    (return)))))))
+    (if (equal "" name)
+        (error 'name-parse-error
+               :character (peek-char nil input nil 'end-of-file))
+        name)))
 
 ;;;; 4.3.2. Consume comments
 ;;; https://www.w3.org/TR/css-syntax-3/#consume-comment
