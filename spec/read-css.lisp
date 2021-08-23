@@ -914,6 +914,129 @@
 				      :value 6
 				      :unit "px")))))))
 
+(requirements-about CONSUME-A-LIST-OF-DECLARATIONS :doc-type function)
+
+;;;; Description:
+
+#+syntax (CONSUME-A-LIST-OF-DECLARATIONS &optional (input *standard-input*))
+; => result
+
+;;;; Arguments and Values:
+
+; input := 
+
+; result := 
+
+;;;; Affected By:
+
+;;;; Side-Effects:
+
+;;;; Notes:
+
+;;;; Exceptional-Situations:
+
+;;;; Tests:
+#?(with-input-from-string (in "padding-top:6px;}a")
+    (let ((in (read-css::ensure-input-stream in)))
+      (values (consume-a-list-of-declarations in)
+	      (read-char in))))
+:multiple-value-satisfies
+(lambda (list char)
+  (& (equalp (list (read-css::make-css-declaration
+		     :name "padding-top"
+		     :list (list (list (read-css::make-dimension-token :value 6 :unit "px")))))
+	     list)
+     (eql char #\a)))
+
+#?(with-input-from-string (in " background: #ffffe2; border-radius:10px;}")
+    (consume-a-list-of-declarations in))
+:satisfies (lambda (x)
+	     (& (equalp x `(,(read-css::make-css-declaration
+			       :name "background"
+			       :list `((,(cl-colors2:rgb 1 1 226/255))))
+			     ,(read-css::make-css-declaration
+				:name "border-radius"
+				:list `((,(read-css::make-dimension-token
+					    :value 10
+					    :unit "px"))))))))
+
+#?(with-input-from-string (in "background-size: 200px auto, 44px 76px;}")
+    (consume-a-list-of-declarations in))
+:satisfies (lambda (x)
+	     (& (equalp x
+			`(,(read-css::make-css-declaration
+			     :name "background-size"
+			     :list `((,(read-css::make-dimension-token
+					 :value 200
+					 :unit "px")
+				       ,"auto")
+				     (,(read-css::make-dimension-token
+					 :value 44
+					 :unit "px")
+				       ,(read-css::make-dimension-token
+					  :value 76
+					  :unit "px"))))))))
+
+#?(with-input-from-string (in "/* overflow:auto; */height:250px;position:relative;}")
+    (consume-a-list-of-declarations in))
+:satisfies (lambda (x)
+	     (& (equalp x
+			`(,(read-css::make-css-declaration
+			     :name "height"
+			     :list `((,(read-css::make-dimension-token
+					 :value 250
+					 :unit "px"))))
+			   ,(read-css::make-css-declaration
+			      :name "position"
+			      :list `(("relative")))))))
+
+#?(with-input-from-string (in " font-size:87.5%; }")
+    (consume-a-list-of-declarations in))
+:satisfies (lambda (x)
+	     (& (equalp x
+			(list (read-css::make-css-declaration
+				:name "font-size"
+				:list `((,(read-css::make-percentage-token
+					    :value 87.5))))))))
+
+#?(with-input-from-string (in "opacity:0!important;}")
+    (consume-a-list-of-declarations in))
+:satisfies
+(lambda (x)
+  (& (equalp x (list (read-css::make-css-declaration
+		       :name "opacity"
+		       :importantp t
+		       :list `((,(read-css::make-number-token :value 0))))))))
+
+#?(with-input-from-string (in "filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#b3b3b3',GradientType=0 ); }")
+    (consume-a-list-of-declarations in))
+:signals parse-error ; duplicated colon.
+,:with-restarts continue
+
+#?(with-input-from-string (in "filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#b3b3b3',GradientType=0 ); }")
+    (handler-bind ((parse-error #'continue))
+      (values (consume-a-list-of-declarations in)
+	      (read-char in nil nil))))
+:values (nil nil)
+,:ignore-signals warning
+
+#?(with-input-from-string (in "top: calc(100% + 7px);}")
+    (consume-a-list-of-declarations in))
+:satisfies
+(lambda (x)
+  (& (equalp x
+	     (list (read-css::make-css-declaration
+		     :name "top"
+		     :list `((,(read-css::make-function-token
+				 :name "calc"
+				 :args (list (read-css::make-percentage-token
+					       :value 100)
+					     (read-css::make-delim-token
+					       :value "+")
+					     (read-css::make-dimension-token
+					       :value 7
+					       :unit "px"))))))))))
+
 (requirements-about |#rgb-reader| :doc-type function)
 
 ;;;; Description:
@@ -946,39 +1069,6 @@
 				   (/ #x34 #xFF)
 				   (/ #x56 #xFF)))
      (eql char #\7)))
-
-(requirements-about |{-reader| :doc-type function)
-
-;;;; Description:
-
-#+syntax (|{-reader| input open-paren) ; => result
-
-;;;; Arguments and Values:
-
-; input := 
-
-; open-paren := 
-
-; result := 
-
-;;;; Affected By:
-
-;;;; Side-Effects:
-
-;;;; Notes:
-
-;;;; Exceptional-Situations:
-#?(with-input-from-string (in "padding-top:6px;}a")
-    (let ((in (read-css::ensure-input-stream in)))
-      (values (|{-reader| in #\{)
-	      (read-char in))))
-:multiple-value-satisfies
-(lambda (list char)
-  (& (equalp (list (read-css::make-css-declaration
-		     :name "padding-top"
-		     :list (list (list (read-css::make-dimension-token :value 6 :unit "px")))))
-	     list)
-     (eql char #\a)))
 
 (requirements-about READ-STYLE :doc-type function)
 
@@ -1160,66 +1250,6 @@
 						    (read-css::make-dimension-token
 						      :value 153 :unit "px")))))))))
 
-#?(with-input-from-string (in "{ background: #ffffe2; border-radius:10px;}")
-    (read-style in t t t))
-:satisfies (lambda (x)
-	     (& (equalp x `(,(read-css::make-css-declaration
-			       :name "background"
-			       :list `((,(cl-colors2:rgb 1 1 226/255))))
-			     ,(read-css::make-css-declaration
-				:name "border-radius"
-				:list `((,(read-css::make-dimension-token
-					    :value 10
-					    :unit "px"))))))))
-
-#?(with-input-from-string (in "{background-size: 200px auto, 44px 76px;}")
-    (read-style in t t t))
-:satisfies (lambda (x)
-	     (& (equalp x
-			`(,(read-css::make-css-declaration
-			     :name "background-size"
-			     :list `((,(read-css::make-dimension-token
-					 :value 200
-					 :unit "px")
-				       ,"auto")
-				     (,(read-css::make-dimension-token
-					 :value 44
-					 :unit "px")
-				       ,(read-css::make-dimension-token
-					  :value 76
-					  :unit "px"))))))))
-
-#?(with-input-from-string (in "{/* overflow:auto; */height:250px;position:relative;}")
-    (read-style in t t t))
-:satisfies (lambda (x)
-	     (& (equalp x
-			`(,(read-css::make-css-declaration
-			     :name "height"
-			     :list `((,(read-css::make-dimension-token
-					 :value 250
-					 :unit "px"))))
-			   ,(read-css::make-css-declaration
-			      :name "position"
-			      :list `(("relative")))))))
-
-#?(with-input-from-string (in "{ font-size:87.5%; }")
-    (read-style in t t t))
-:satisfies (lambda (x)
-	     (& (equalp x
-			(list (read-css::make-css-declaration
-				:name "font-size"
-				:list `((,(read-css::make-percentage-token
-					    :value 87.5))))))))
-
-#?(with-input-from-string (in "{opacity:0!important;}")
-    (read-style in t t t))
-:satisfies
-(lambda (x)
-  (& (equalp x (list (read-css::make-css-declaration
-		       :name "opacity"
-		       :importantp t
-		       :list `((,(read-css::make-number-token :value 0))))))))
-
 #?(with-input-from-string (in "p{ /*comment*/ }")
     (let ((in (read-css::ensure-input-stream in)))
       (values (read-style in)
@@ -1243,35 +1273,6 @@
 				       :importantp nil
 				       :list (list (list (read-css::make-percentage-token
 							   :value 74)))))))))
-
-#?(with-input-from-string (in "{filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#b3b3b3',GradientType=0 ); }")
-    (read-style in t t t))
-:signals parse-error ; duplicated colon.
-,:with-restarts continue
-
-#?(with-input-from-string (in "{filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#b3b3b3',GradientType=0 ); }")
-    (handler-bind ((parse-error #'continue))
-      (values (read-style in t t t)
-	      (read-char in nil nil))))
-:values (nil nil)
-,:ignore-signals warning
-
-#?(with-input-from-string (in "{top: calc(100% + 7px);}")
-    (read-style in t t t))
-:satisfies
-(lambda (x)
-  (& (equalp x
-	     (list (read-css::make-css-declaration
-		     :name "top"
-		     :list `((,(read-css::make-function-token
-				 :name "calc"
-				 :args (list (read-css::make-percentage-token
-					       :value 100)
-					     (read-css::make-delim-token
-					       :value "+")
-					     (read-css::make-dimension-token
-					       :value 7
-					       :unit "px"))))))))))
 
 (requirements-about READ-CSS :doc-type function)
 

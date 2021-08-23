@@ -992,7 +992,7 @@
 
 (defun |{-reader| (input open-paren)
   (declare (ignore open-paren))
-  (consume-a-list-of-declarations input))
+  (consume-a-simple-block #\} input))
 
 (declaim
  (ftype (function (stream character) (values cl-colors2:rgb &optional))
@@ -1126,12 +1126,12 @@
   (:macro-char #\/ '|/-reader|) ; for comment.
   (:macro-char #\" '|"-reader|)
   (:macro-char #\' '|"-reader|)
-  (:macro-char #\{ '|{-reader|)
   (:macro-char #\# '|#rgb-reader|)
   (:macro-char #\! '|!-reader|))
 
 (named-readtables:defreadtable component-readtable
   (:merge css-non-toplevel)
+  (:macro-char #\{ '|{-reader|)
   (:macro-char #\( '|(-reader|)
   (:macro-char #\[ '|[-reader|))
 
@@ -1177,8 +1177,11 @@
             ((or (find char ".#") (start-an-identifier-p input))
              (let ((selectors (consume-selectors input (read-char input))))
                (if (char= #\{ (peek-char t input nil #\Nul))
-                   (make-qualified-rule :selectors selectors
-                                        :declarations (read-style input t t t))
+                   (progn
+                    (read-char input) ; discard #\{
+                    (make-qualified-rule :selectors selectors
+                                         :declarations (consume-a-list-of-declarations
+                                                         input)))
                    (error 'simple-parse-error
                           :format-control "Missing declarations after ~S."
                           :format-arguments (list selectors)))))
