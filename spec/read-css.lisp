@@ -1321,6 +1321,18 @@
 							 :value 991
 							 :unit "px")))))))))))
 
+#?(with-input-from-string (in "* html {height: 1px;}")
+    (read-style in))
+:satisfies (lambda (rule)
+	     (& (equalp rule
+			(read-css::make-qualified-rule
+			  :selectors '("* html")
+			  :declarations `(,(read-css::make-css-declaration
+					     :name "height"
+					     :list `((,(read-css::make-dimension-token
+							 :value 1
+							 :unit "px")))))))))
+
 (requirements-about READ-CSS :doc-type function)
 
 ;;;; Description:

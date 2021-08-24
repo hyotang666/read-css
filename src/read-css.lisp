@@ -1182,7 +1182,7 @@
              (if (start-a-number-p input)
                  (consume-a-numeric-token input)
                  (consume-an-ident-like-token input)))
-            ((or (find char ".#") (start-an-identifier-p input))
+            ((or (find char ".#*") (start-an-identifier-p input))
              (let ((selectors (consume-selectors input (read-char input))))
                (if (char= #\{ (peek-char t input nil #\Nul))
                    (progn
