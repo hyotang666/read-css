@@ -13,6 +13,36 @@ Please tell me if exists.
 ```
 For details, see [spec file](spec/read-css.lisp).
 
+### To serialize.
+
+```lisp
+* (defvar *style* (read-style-from-string "p { width: 100px; }"))
+*STYLE*
+
+* *style*
+#S(QUALIFIED-RULE
+   :SELECTORS ("p")
+   :DECLARATIONS (#S(CSS-DECLARATION
+                     :NAME "width"
+		     :IMPORTANTP NIL
+		     :LIST ((#S(DIMENSION-TOKEN :VALUE 100 :UNIT "px"))))))
+
+* (tagbody (princ *style*))
+p { width:100px; }
+NIL
+```
+*NOTE:* `PRINC` does not emit newline.
+If you want to `PRINC` some styles, you need to `TERPRI`.
+
+### To minimize.
+Serialization heavily depends on common lisp pretty printing features,
+so if `*PRINT-PRETTY*` is `NIL` indentation is not printed.
+
+```lisp
+* (let ((*print-pretty* nil))
+    (princ style))
+```
+
 ## From developer
 Alpha quality.
 
