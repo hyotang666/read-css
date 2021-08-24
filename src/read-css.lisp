@@ -1027,9 +1027,21 @@
   (cond (*print-readably* (call-next-method))
         (*print-escape* (call-next-method))
         (t
-         (funcall (formatter "~<~{~A~^, ~} {~4I ~_~{~A ~^~_~}~I~_}~:>") stream
-                  (list (qualified-rule-selectors q)
-                        (qualified-rule-declarations q))))))
+         (funcall
+           (formatter
+            #.(concatenate 'string "~<" ; pprint-logical-block.
+                           "~{" ; selectors.
+                           "~A~^, ~_" ; each selector.
+                           "~}" ; end of selectors
+                           " {~4I ~_" ; block prefix.
+                           "~{" ; iter for block.
+                           "~A ~^~_" ; each decl.
+                           "~}" ; end of iter for block.
+                           "~I~_}" ; block suffix.
+                           "~:>"))
+           stream
+           (list (qualified-rule-selectors q)
+                 (qualified-rule-declarations q))))))
 
 (defun |<-reader| (input character)
   (if (stream-start-with "!--" input)
