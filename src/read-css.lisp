@@ -956,7 +956,7 @@
                        (write-char c))
                    (end-of-file ()))))
              (trim-whitespaces (string)
-               (string-right-trim +white-spaces+ string))
+               (string-trim +white-spaces+ string))
              (collect (x)
                (rplacd tail (setf tail (list x)))))
       (collect
