@@ -321,7 +321,7 @@
  | [ ] 4.3.1  Consume a token
  | [*] 4.3.2  Consume comments
  | [*] 4.3.3  Consume a numeric token
- | [?] 4.3.4  Consume an ident-like token
+ | [*] 4.3.4  Consume an ident-like token
  | [*] 4.3.5  Consume a string token
  | [*] 4.3.6  Consume a url token
  | [*] 4.3.7  Consume an escaped code point
@@ -333,13 +333,13 @@
  | [ ] 4.3.13 Convert a string to a number
  | [*] 4.3.14 Consume the remnants of a bad url
  | [ ] 5.4.1  Consume a list of rules
- | [ ] 5.4.2  Consume an at-rule
- | [ ] 5.4.3  Consume a qualified rule
- | [ ] 5.4.4  Consume a list of declarations
- | [ ] 5.4.5  Consume a declaration
+ | [*] 5.4.2  Consume an at-rule
+ | [*] 5.4.3  Consume a qualified rule
+ | [*] 5.4.4  Consume a list of declarations
+ | [*] 5.4.5  Consume a declaration
  | [*] 5.4.6  Consume a component value
- | [ ] 5.4.7  Consume a simple block
- | [ ] 5.4.8  Consume a function
+ | [*] 5.4.7  Consume a simple block
+ | [*] 5.4.8  Consume a function
  |#
 
 ;;;; 4.3.8. Check if two code points are a valid escape
